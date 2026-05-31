@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && cp -r dist/server dist/client/server && echo 'export { default } from \"./server/server.js\";' > dist/client/_worker.js && rm -rf dist/client/wrangler.json .wrangler",
+    "build": "vite build && cp -r dist/server dist/client/server && echo 'export { default } from \"./server/server.js\";' > dist/client/_worker.js && echo '{\"version\":1,\"include\":[\"/*\"],\"exclude\":[\"/assets/*\"]}' > dist/client/_routes.json && rm -rf dist/client/wrangler.json .wrangler",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
