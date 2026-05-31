@@ -1,0 +1,327 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap");
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   Sincronia — Soft Luxury Dark
+   Premium financial OS for couples & families
+   All color tokens in oklch.
+   ============================================ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-champagne: var(--champagne);
+  --color-champagne-soft: var(--champagne-soft);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+
+  --font-serif: "Playfair Display", "Georgia", serif;
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  /* dark by default — this app is dark-first */
+  --radius: 0.875rem;
+
+  --background: oklch(0.165 0.005 60);          /* #0D0D0F warm near-black */
+  --foreground: oklch(0.96 0.012 80);           /* warm white #F4EFE6 */
+
+  --surface: oklch(0.205 0.006 60);             /* slightly raised */
+  --surface-elevated: oklch(0.235 0.008 65);
+
+  --card: oklch(0.205 0.006 60);
+  --card-foreground: oklch(0.96 0.012 80);
+  --popover: oklch(0.215 0.007 60);
+  --popover-foreground: oklch(0.96 0.012 80);
+
+  --primary: oklch(0.82 0.07 75);               /* champagne #D4B896 */
+  --primary-foreground: oklch(0.18 0.01 60);
+  --champagne: oklch(0.82 0.07 75);
+  --champagne-soft: oklch(0.88 0.045 80);
+
+  --secondary: oklch(0.27 0.008 65);
+  --secondary-foreground: oklch(0.94 0.01 80);
+  --muted: oklch(0.235 0.008 65);
+  --muted-foreground: oklch(0.66 0.012 70);
+  --accent: oklch(0.30 0.012 70);
+  --accent-foreground: oklch(0.96 0.012 80);
+
+  --destructive: oklch(0.62 0.18 25);
+  --destructive-foreground: oklch(0.97 0.01 80);
+  --positive: oklch(0.74 0.12 145);
+  --negative: oklch(0.66 0.16 28);
+
+  --border: oklch(1 0 0 / 0.07);
+  --input: oklch(1 0 0 / 0.10);
+  --ring: oklch(0.82 0.07 75 / 0.5);
+
+  --shadow-soft: 0 1px 0 0 oklch(1 0 0 / 0.04) inset,
+                 0 30px 60px -30px oklch(0 0 0 / 0.6);
+  --shadow-glow: 0 0 0 1px oklch(0.82 0.07 75 / 0.18),
+                 0 20px 60px -20px oklch(0.82 0.07 75 / 0.25);
+
+  --gradient-hero: linear-gradient(180deg, oklch(0.165 0.005 60) 0%, oklch(0.175 0.008 65) 60%, oklch(0.155 0.006 55) 100%);
+  --gradient-hero-warm: radial-gradient(900px 700px at 92% 30%, oklch(0.78 0.09 65 / 0.18), transparent 65%);
+  --gradient-hero-vignette: linear-gradient(180deg, transparent 60%, oklch(0.13 0.004 55) 100%);
+  --gradient-champagne: linear-gradient(
+    135deg,
+    oklch(0.86 0.06 80),
+    oklch(0.78 0.08 65)
+  );
+  --gradient-surface: linear-gradient(
+    180deg,
+    oklch(0.22 0.007 60),
+    oklch(0.195 0.005 60)
+  );
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-background);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Outfit não usa feature settings complexas — mantém leitura limpa */
+  }
+
+  .font-serif {
+    font-family: var(--font-serif);
+    letter-spacing: -0.015em;
+    /* Playfair Display tem serifas bem definidas — reduz letter-spacing só levemente */
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  .glass {
+    background: var(--gradient-surface);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .glass-strong {
+    background: oklch(0.22 0.007 60 / 0.7);
+    border: 1px solid var(--color-border);
+    backdrop-filter: blur(28px) saturate(140%);
+  }
+
+  .hero-bg {
+    background-image: var(--gradient-hero);
+  }
+
+  /* Stroke draw animation for sparkline / area chart */
+  @keyframes draw-line {
+    from { stroke-dashoffset: var(--dash, 2000); }
+    to   { stroke-dashoffset: 0; }
+  }
+  .animate-draw {
+    stroke-dasharray: var(--dash, 2000);
+    stroke-dashoffset: var(--dash, 2000);
+    animation: draw-line 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .fade-up-stagger > * {
+    opacity: 0;
+    animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .fade-up-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .fade-up-stagger > *:nth-child(2) { animation-delay: 120ms; }
+  .fade-up-stagger > *:nth-child(3) { animation-delay: 260ms; }
+  .fade-up-stagger > *:nth-child(4) { animation-delay: 420ms; }
+  .fade-up-stagger > *:nth-child(5) { animation-delay: 560ms; }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.06); }
+  }
+  .animate-breathe { animation: breathe 9s ease-in-out infinite; }
+
+  @keyframes breathe-soft {
+    0%, 100% { opacity: 0.85; transform: scale(1); }
+    50%      { opacity: 1;    transform: scale(1.015); }
+  }
+  .animate-breathe-soft { animation: breathe-soft 12s ease-in-out infinite; }
+
+  @keyframes ken-burns {
+    from { transform: scale(1.06); }
+    to   { transform: scale(1); }
+  }
+  .animate-ken-burns { animation: ken-burns 2.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 0.5; box-shadow: 0 0 0 0 oklch(0.82 0.07 75 / 0); }
+    50%      { opacity: 1;   box-shadow: 0 0 10px 1px oklch(0.82 0.07 75 / 0.5); }
+  }
+  .animate-pulse-dot { animation: pulse-dot 3.4s ease-in-out infinite; }
+
+  .grain-overlay {
+    background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-breathe, .animate-breathe-soft, .animate-pulse-dot,
+    .fade-up-stagger > *, .animate-fade-up, .animate-draw {
+      animation: none !important;
+    }
+    .fade-up-stagger > * { opacity: 1; }
+  }
+
+  ::selection {
+    background: oklch(0.82 0.07 75 / 0.3);
+    color: var(--color-foreground);
+  }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.08);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 0.14); }
+
+  /* =============================================
+     INPUT FOCUS GLOW — champagne suave ao focar
+     ============================================= */
+  .inp {
+    width: 100%;
+    background: oklch(1 0 0 / 0.06);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    height: 2.75rem;
+    padding: 0 1rem;
+    font-size: 14px;
+    font-family: var(--font-sans);
+    color: var(--color-foreground);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .inp:focus {
+    border-color: oklch(0.82 0.07 75 / 0.45);
+    box-shadow: 0 0 0 3px oklch(0.82 0.07 75 / 0.12), 0 1px 2px 0 oklch(0 0 0 / 0.3);
+    background: oklch(1 0 0 / 0.08);
+  }
+  .inp::placeholder {
+    color: var(--color-muted-foreground);
+    opacity: 0.7;
+  }
+
+  /* =============================================
+     MOBILE BOTTOM SHEET — modal sobe de baixo
+     ============================================= */
+  @keyframes sheet-up {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @media (max-width: 640px) {
+    .modal-as-sheet {
+      position: fixed !important;
+      inset: auto 0 0 0 !important;
+      max-width: 100% !important;
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+      border-top-left-radius: 1.25rem !important;
+      border-top-right-radius: 1.25rem !important;
+      animation: sheet-up 0.38s cubic-bezier(0.32, 0.72, 0, 1) both !important;
+      max-height: 92vh !important;
+      overflow-y: auto !important;
+    }
+    .modal-as-sheet::before {
+      content: "";
+      display: block;
+      width: 36px;
+      height: 4px;
+      border-radius: 9999px;
+      background: oklch(1 0 0 / 0.15);
+      margin: 0 auto 1rem auto;
+    }
+  }
+
+  /* =============================================
+     GOAL CELEBRATION — brilho champagne ao atingir 100%
+     ============================================= */
+  @keyframes goal-shimmer {
+    0%   { box-shadow: 0 0 0 0 oklch(0.82 0.07 75 / 0), 0 0 0 0 oklch(0.82 0.07 75 / 0); }
+    30%  { box-shadow: 0 0 30px 4px oklch(0.82 0.07 75 / 0.35), 0 0 60px 8px oklch(0.82 0.07 75 / 0.15); }
+    70%  { box-shadow: 0 0 20px 2px oklch(0.82 0.07 75 / 0.20), 0 0 40px 4px oklch(0.82 0.07 75 / 0.08); }
+    100% { box-shadow: 0 0 0 0 oklch(0.82 0.07 75 / 0), 0 0 0 0 oklch(0.82 0.07 75 / 0); }
+  }
+  .goal-celebrate {
+    animation: goal-shimmer 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  @keyframes progress-fill {
+    from { width: 0%; }
+  }
+  .animate-progress {
+    animation: progress-fill 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* =============================================
+     SAFE AREA — iOS home indicator / Android nav
+     ============================================= */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Garante que o conteúdo não fique atrás do bottom nav no mobile */
+  @media (max-width: 767px) {
+    .pb-mobile-nav {
+      padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+}

@@ -1,0 +1,407 @@
+
+<h2 class="sr-only">Proposta de redesign do painel Sonhos do Sincronia — análise e mockup interativo desktop e mobile</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{font-family:var(--font-sans);color:var(--color-text-primary);padding:0 0 2rem}
+.section{margin-bottom:2.5rem}
+.sec-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;color:var(--color-text-tertiary);margin-bottom:14px}
+.problems{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:2rem}
+.prob{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:14px 16px;border:0.5px solid var(--color-border-tertiary)}
+.prob-title{font-size:13px;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+.prob-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.55}
+.badge{display:inline-flex;align-items:center;font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px}
+.b-bad{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.sep{height:0.5px;background:var(--color-border-tertiary);margin:2rem 0}
+.mock-tabs{display:flex;gap:6px;margin-bottom:1.5rem}
+.mock-tab{padding:6px 16px;border-radius:20px;border:0.5px solid var(--color-border-secondary);font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--color-text-secondary);transition:all .15s;font-family:var(--font-sans)}
+.mock-tab.on{background:var(--color-background-primary);border-color:var(--color-border-primary);color:var(--color-text-primary)}
+.device-wrap{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:1.5rem;border:0.5px solid var(--color-border-tertiary)}
+
+/* ── Sincronia dark skin (mockup) ── */
+.sk{background:#111;border-radius:16px;overflow:hidden;font-family:var(--font-sans)}
+.sk *{box-sizing:border-box}
+.sk-nav{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06)}
+.sk-logo{font-size:16px;font-weight:500;color:#E8C98A;letter-spacing:-.3px}
+.sk-nav-links{display:flex;gap:20px}
+.sk-nav-links a{font-size:13px;color:rgba(255,255,255,.4);text-decoration:none}
+.sk-nav-links a.cur{color:rgba(255,255,255,.85)}
+.sk-btn-lnc{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:6px 14px;font-size:12px;color:rgba(255,255,255,.8);cursor:pointer}
+.sk-emoji{font-size:18px}
+
+/* Hero */
+.sk-hero{padding:28px 24px 0;display:flex;justify-content:space-between;align-items:flex-start}
+.sk-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.3);margin-bottom:10px}
+.sk-hero-title{font-size:clamp(22px,3.5vw,32px);font-weight:400;color:rgba(255,255,255,.9);line-height:1.15}
+.sk-hero-title em{font-style:italic;color:#C9A96E}
+.sk-hero-add{background:#C9A96E;color:#0f0f0f;border:none;border-radius:22px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+
+/* Métricas */
+.sk-metrics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:20px 24px}
+.sk-m{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 16px}
+.sk-m-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.3);margin-bottom:8px}
+.sk-m-val{font-size:22px;font-weight:400;color:rgba(255,255,255,.9);letter-spacing:-.03em;line-height:1}
+.sk-m-sub{font-size:11px;color:rgba(255,255,255,.35);margin-top:4px}
+.sk-m-val.gold{color:#C9A96E}
+.sk-m-val.green{color:#4ADE80}
+
+/* Dream card(s) */
+.sk-dreams{padding:0 24px 24px}
+.sk-dreams-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.28);margin-bottom:14px}
+.sk-dream{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:12px}
+.sk-dream-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.sk-dream-name{font-size:16px;font-weight:500;color:rgba(255,255,255,.88)}
+.sk-dream-cat{font-size:10px;background:rgba(201,169,110,.15);color:#C9A96E;border-radius:12px;padding:3px 10px;margin-top:4px;display:inline-block}
+.sk-dream-pct{font-size:28px;font-weight:300;color:#C9A96E;letter-spacing:-.04em;line-height:1}
+.sk-dream-pct-sub{font-size:10px;color:rgba(255,255,255,.3);text-align:right;margin-top:2px}
+
+/* Arc ring */
+.sk-ring-wrap{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.sk-ring{position:relative;width:72px;height:72px;flex-shrink:0}
+.sk-ring svg{transform:rotate(-90deg)}
+.sk-ring-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
+.sk-ring-num{font-size:15px;font-weight:500;color:#C9A96E;line-height:1}
+.sk-ring-u{font-size:9px;color:rgba(255,255,255,.3)}
+.sk-dream-info{flex:1}
+.sk-dream-info-row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.sk-dream-info-row:last-child{border-bottom:none}
+.sk-dream-info-row .lbl{color:rgba(255,255,255,.35)}
+.sk-dream-info-row .val{color:rgba(255,255,255,.75);font-weight:500}
+
+/* Progress bar */
+.sk-bar-wrap{margin-bottom:14px}
+.sk-bar-bg{background:rgba(255,255,255,.07);border-radius:4px;height:5px;overflow:hidden}
+.sk-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,#C9A96E,#E8C98A);transition:width .6s}
+.sk-bar-labels{display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,.3);margin-top:5px}
+
+/* Dream actions */
+.sk-dream-actions{display:flex;gap:8px}
+.sk-act-primary{flex:1;background:#C9A96E;color:#0f0f0f;border:none;border-radius:20px;padding:9px;font-size:12px;font-weight:600;cursor:pointer}
+.sk-act-icon{width:34px;height:34px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.5);font-size:14px}
+
+/* Milestone pills */
+.sk-miles{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.sk-mile{font-size:10px;padding:4px 10px;border-radius:12px;font-weight:500}
+.sk-mile.done{background:rgba(74,222,128,.15);color:#4ADE80;border:1px solid rgba(74,222,128,.2)}
+.sk-mile.next{background:rgba(201,169,110,.12);color:#C9A96E;border:1px solid rgba(201,169,110,.2)}
+.sk-mile.far{background:rgba(255,255,255,.05);color:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.07)}
+
+/* Forecast pill */
+.sk-forecast{display:flex;align-items:center;gap:6px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.15);border-radius:10px;padding:8px 12px;margin-bottom:14px}
+.sk-forecast-icon{font-size:14px}
+.sk-forecast-text{font-size:11px;color:rgba(255,255,255,.55);line-height:1.4}
+.sk-forecast-text strong{color:#4ADE80;font-weight:500}
+
+/* Mobile bottom nav */
+.sk-bottomnav{display:none;background:#111;border-top:1px solid rgba(255,255,255,.07);padding:10px 0 14px}
+.sk-bn-items{display:flex;justify-content:space-around}
+.sk-bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:rgba(255,255,255,.3);cursor:pointer;min-width:50px}
+.sk-bn-item.cur{color:#C9A96E}
+.sk-bn-item i{font-size:20px}
+.sk-bn-item .bn-dot{width:4px;height:4px;border-radius:50%;background:#C9A96E;margin:2px auto 0}
+
+/* Mobile adjustments */
+.sk.mobile .sk-nav .sk-nav-links{display:none}
+.sk.mobile .sk-metrics{grid-template-columns:1fr 1fr 1fr;gap:8px;padding:16px 16px}
+.sk.mobile .sk-hero{padding:20px 16px 0}
+.sk.mobile .sk-dreams{padding:0 16px 16px}
+.sk.mobile .sk-hero-title{font-size:22px}
+.sk.mobile .sk-bottomnav{display:block}
+.sk.mobile .sk-m-val{font-size:18px}
+
+@media(max-width:600px){
+  .problems{grid-template-columns:1fr}
+  .sk-metrics{grid-template-columns:1fr 1fr!important}
+  .sk-ring-wrap{flex-direction:column;text-align:center}
+}
+</style>
+
+<div class="wrap">
+
+<div class="section">
+  <div class="sec-label">O que está errado agora</div>
+  <div class="problems">
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-bad">crítico</span>Grade de 100 quadradinhos</div>
+      <div class="prob-desc">A "waffle chart" com 100 células é ruim em UX — o usuário precisa contar blocos manualmente para entender o progresso. Não comunica emoção nem urgência.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-bad">crítico</span>Texto "mmmmm" aparece como nome</div>
+      <div class="prob-desc">O nome do sonho com placeholder "mmmmm" expõe que o campo não foi tratado. O card não estabelece hierarquia — nome, valor e progresso têm o mesmo peso visual.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-bad">moderado</span>Métricas empilhadas verticalmente no mobile</div>
+      <div class="prob-desc">Total Acumulado, Meta Combinada e Progresso ficam em cards separados que ocupam toda a tela antes de mostrar os sonhos. O usuário precisa rolar muito.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-bad">moderado</span>Nenhuma narrativa ou previsão</div>
+      <div class="prob-desc">O sistema calcula saldo mensal mas não mostra "em X meses você chega lá". Isso é o dado mais motivador para um casal — e está completamente ausente.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-bad">polimento</span>Botões + Aportar e lápis mal alinhados</div>
+      <div class="prob-desc">O botão de aportar é champagne largo mas os ícones de editar/pausar ficam soltos ao lado sem hierarquia clara de ação primária vs secundária.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-bad">polimento</span>Hero "A construção do futuro" genérico</div>
+      <div class="prob-desc">O título da seção não muda com o contexto — mesmo sem sonhos e com sonhos. Deveria ser dinâmico e refletir o estado atual (ex: "92% do primeiro sonho").</div>
+    </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<div class="section">
+  <div class="sec-label">Redesign proposto — alternar visualização</div>
+  <div class="mock-tabs">
+    <button class="mock-tab on" onclick="showMock('desktop')">Desktop</button>
+    <button class="mock-tab" onclick="showMock('mobile')">Mobile</button>
+  </div>
+
+  <div class="device-wrap">
+
+    <!-- DESKTOP MOCK -->
+    <div id="mock-desktop" class="sk">
+      <div class="sk-nav">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:#C9A96E;opacity:.85"></div>
+          <span class="sk-logo">Sincronia</span>
+        </div>
+        <div class="sk-nav-links">
+          <a href="#">Início</a>
+          <a href="#">Lançamentos</a>
+          <a href="#" class="cur">Sonhos</a>
+          <a href="#">Notas</a>
+          <a href="#">Casal</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="sk-emoji">😊</span>
+          <button class="sk-btn-lnc">+ Lançar</button>
+        </div>
+      </div>
+
+      <div class="sk-hero">
+        <div>
+          <div class="sk-eyebrow">Sonhos em construção</div>
+          <div class="sk-hero-title">Vocês estão<br><em>92% do caminho.</em></div>
+        </div>
+        <button class="sk-hero-add">+ Novo sonho</button>
+      </div>
+
+      <div class="sk-metrics">
+        <div class="sk-m">
+          <div class="sk-m-label">Acumulado</div>
+          <div class="sk-m-val">R$ 11,00</div>
+          <div class="sk-m-sub">de R$ 12,00</div>
+        </div>
+        <div class="sk-m">
+          <div class="sk-m-label">Faltam</div>
+          <div class="sk-m-val gold">R$ 1,00</div>
+          <div class="sk-m-sub">1 sonho ativo</div>
+        </div>
+        <div class="sk-m">
+          <div class="sk-m-label">Previsão</div>
+          <div class="sk-m-val green">~3 sem</div>
+          <div class="sk-m-sub">no ritmo atual</div>
+        </div>
+      </div>
+
+      <div class="sk-dreams">
+        <div class="sk-dreams-label">Sonho ativo</div>
+        <div class="sk-dream">
+          <div class="sk-dream-top">
+            <div>
+              <div class="sk-dream-name">Primeiro carro</div>
+              <span class="sk-dream-cat">🚗 Veículo</span>
+            </div>
+            <div style="text-align:right">
+              <div class="sk-dream-pct">92%</div>
+              <div class="sk-dream-pct-sub">Quase lá ✦</div>
+            </div>
+          </div>
+
+          <div class="sk-ring-wrap">
+            <div class="sk-ring">
+              <svg width="72" height="72" viewBox="0 0 72 72">
+                <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="5"/>
+                <circle cx="36" cy="36" r="28" fill="none" stroke="#C9A96E" stroke-width="5" stroke-linecap="round"
+                  stroke-dasharray="175.93" stroke-dashoffset="14.07"/>
+              </svg>
+              <div class="sk-ring-val">
+                <div class="sk-ring-num">92%</div>
+                <div class="sk-ring-u">progresso</div>
+              </div>
+            </div>
+            <div class="sk-dream-info">
+              <div class="sk-dream-info-row"><span class="lbl">Acumulado</span><span class="val">R$ 11,00</span></div>
+              <div class="sk-dream-info-row"><span class="lbl">Meta</span><span class="val">R$ 12,00</span></div>
+              <div class="sk-dream-info-row"><span class="lbl">Falta</span><span class="val" style="color:#C9A96E">R$ 1,00</span></div>
+              <div class="sk-dream-info-row"><span class="lbl">Prazo</span><span class="val">jun/2026</span></div>
+            </div>
+          </div>
+
+          <div class="sk-forecast">
+            <span class="sk-forecast-icon">📈</span>
+            <div class="sk-forecast-text">
+              No ritmo atual de poupança, vocês chegam lá em <strong>~3 semanas</strong>. Aumentar R$ 5/semana antecipa em 5 dias.
+            </div>
+          </div>
+
+          <div class="sk-miles">
+            <span class="sk-mile done">✓ R$ 5 guardados</span>
+            <span class="sk-mile done">✓ 50% atingidos</span>
+            <span class="sk-mile done">✓ 75% atingidos</span>
+            <span class="sk-mile next">→ 100% (R$ 1,00)</span>
+          </div>
+
+          <div class="sk-bar-wrap">
+            <div class="sk-bar-bg"><div class="sk-bar-fill" style="width:92%"></div></div>
+            <div class="sk-bar-labels"><span>R$ 0</span><span>R$ 11,00 acumulado</span><span>R$ 12,00</span></div>
+          </div>
+
+          <div class="sk-dream-actions">
+            <button class="sk-act-primary">+ Aportar</button>
+            <button class="sk-act-icon" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="sk-act-icon" aria-label="Pausar"><i class="ti ti-player-pause" aria-hidden="true"></i></button>
+            <button class="sk-act-icon" aria-label="Excluir" style="color:rgba(248,113,113,.6)"><i class="ti ti-trash" aria-hidden="true"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE MOCK -->
+    <div id="mock-mobile" class="sk mobile" style="display:none;max-width:375px;margin:0 auto">
+      <div class="sk-nav">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:50%;background:#C9A96E;opacity:.85"></div>
+          <span class="sk-logo" style="font-size:15px">Sincronia</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="sk-emoji" style="font-size:16px">😊</span>
+          <button class="sk-btn-lnc" style="font-size:11px;padding:5px 11px">+ Lançar</button>
+        </div>
+      </div>
+
+      <div class="sk-hero">
+        <div>
+          <div class="sk-eyebrow">Sonhos em construção</div>
+          <div class="sk-hero-title">Vocês estão<br><em>92% do caminho.</em></div>
+        </div>
+      </div>
+
+      <div style="padding:10px 16px 4px;display:flex;justify-content:flex-end">
+        <button class="sk-hero-add" style="font-size:12px;padding:7px 14px">+ Novo sonho</button>
+      </div>
+
+      <div class="sk-metrics">
+        <div class="sk-m">
+          <div class="sk-m-label" style="font-size:9px">Acumulado</div>
+          <div class="sk-m-val" style="font-size:16px">R$ 11</div>
+          <div class="sk-m-sub" style="font-size:10px">de R$ 12,00</div>
+        </div>
+        <div class="sk-m">
+          <div class="sk-m-label" style="font-size:9px">Faltam</div>
+          <div class="sk-m-val gold" style="font-size:16px">R$ 1</div>
+          <div class="sk-m-sub" style="font-size:10px">1 sonho ativo</div>
+        </div>
+        <div class="sk-m">
+          <div class="sk-m-label" style="font-size:9px">Previsão</div>
+          <div class="sk-m-val green" style="font-size:16px">~3sem</div>
+          <div class="sk-m-sub" style="font-size:10px">no ritmo atual</div>
+        </div>
+      </div>
+
+      <div class="sk-dreams">
+        <div class="sk-dreams-label">Sonho ativo</div>
+        <div class="sk-dream" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div>
+              <div class="sk-dream-name" style="font-size:15px">Primeiro carro</div>
+              <span class="sk-dream-cat">🚗 Veículo</span>
+            </div>
+            <div style="text-align:right">
+              <div class="sk-dream-pct" style="font-size:24px">92%</div>
+              <div class="sk-dream-pct-sub">Quase lá ✦</div>
+            </div>
+          </div>
+
+          <div class="sk-bar-wrap">
+            <div class="sk-bar-bg"><div class="sk-bar-fill" style="width:92%"></div></div>
+            <div class="sk-bar-labels"><span>R$ 0</span><span>R$ 12,00</span></div>
+          </div>
+
+          <div class="sk-forecast" style="margin:12px 0">
+            <span class="sk-forecast-icon">📈</span>
+            <div class="sk-forecast-text">Meta em <strong>~3 semanas</strong> no ritmo atual.</div>
+          </div>
+
+          <div class="sk-miles" style="margin-bottom:12px">
+            <span class="sk-mile done">✓ 50%</span>
+            <span class="sk-mile done">✓ 75%</span>
+            <span class="sk-mile next">→ 100%</span>
+          </div>
+
+          <div class="sk-dream-actions">
+            <button class="sk-act-primary">+ Aportar</button>
+            <button class="sk-act-icon" aria-label="Editar"><i class="ti ti-edit" aria-hidden="true"></i></button>
+            <button class="sk-act-icon" aria-label="Excluir" style="color:rgba(248,113,113,.6)"><i class="ti ti-trash" aria-hidden="true"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sk-bottomnav">
+        <div class="sk-bn-items">
+          <div class="sk-bn-item"><i class="ti ti-home" aria-hidden="true"></i><span>Início</span></div>
+          <div class="sk-bn-item"><i class="ti ti-arrow-up" aria-hidden="true"></i><span>Lançar</span></div>
+          <div class="sk-bn-item cur"><i class="ti ti-star" aria-hidden="true"></i><span>Sonhos</span><div class="bn-dot"></div></div>
+          <div class="sk-bn-item"><i class="ti ti-bell" aria-hidden="true"></i><span>Notas</span></div>
+          <div class="sk-bn-item"><i class="ti ti-users" aria-hidden="true"></i><span>Casal</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<div class="section">
+  <div class="sec-label">O que mudou e por quê</div>
+  <div class="problems">
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-ok">fix</span>Waffle → Anel SVG + barra</div>
+      <div class="prob-desc">O anel animado com % central comunica progresso instantaneamente. A barra linear embaixo mostra valores reais. Nenhum contando quadradinhos.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-ok">fix</span>Previsão de chegada visível</div>
+      <div class="prob-desc">Card verde com "~3 semanas no ritmo atual" é o dado mais motivador do sistema. Saiu do score escondido e virou o destaque do card.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-ok">fix</span>Milestones como pills</div>
+      <div class="prob-desc">Marcos já conquistados ficam verdes com checkmark. O próximo fica champagne. Os distantes ficam cinza. Uma leitura de status em 1 segundo.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-ok">fix</span>Hero dinâmico com contexto real</div>
+      <div class="prob-desc">"Vocês estão 92% do caminho" usa o dado real do progresso. Muda conforme a situação — não é mais texto genérico fixo.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-ok">fix</span>Métricas em 3 colunas horizontais</div>
+      <div class="prob-desc">Acumulado, Faltam e Previsão em linha — tanto no mobile quanto no desktop. O usuário vê tudo antes de dar scroll.</div>
+    </div>
+    <div class="prob">
+      <div class="prob-title"><span class="badge b-ok">fix</span>Hierarquia de ações clara</div>
+      <div class="prob-desc">"+ Aportar" largo como primário. Editar/pausar/excluir como ícones circulares secundários. Não sobra dúvida sobre o que clicar primeiro.</div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showMock(v){
+  document.getElementById('mock-desktop').style.display=v==='desktop'?'block':'none';
+  document.getElementById('mock-mobile').style.display=v==='mobile'?'block':'none';
+  document.querySelectorAll('.mock-tab').forEach((t,i)=>{
+    t.classList.toggle('on',(i===0&&v==='desktop')||(i===1&&v==='mobile'));
+  });
+}
+</script>
