@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppSonhosRouteImport } from './routes/_app.sonhos'
+import { Route as AppResumoRouteImport } from './routes/_app.resumo'
 import { Route as AppNotasRouteImport } from './routes/_app.notas'
 import { Route as AppLancamentosRouteImport } from './routes/_app.lancamentos'
 import { Route as AppCasalRouteImport } from './routes/_app.casal'
@@ -28,6 +29,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppSonhosRoute = AppSonhosRouteImport.update({
   id: '/sonhos',
   path: '/sonhos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppResumoRoute = AppResumoRouteImport.update({
+  id: '/resumo',
+  path: '/resumo',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotasRoute = AppNotasRouteImport.update({
@@ -51,12 +57,14 @@ export interface FileRoutesByFullPath {
   '/casal': typeof AppCasalRoute
   '/lancamentos': typeof AppLancamentosRoute
   '/notas': typeof AppNotasRoute
+  '/resumo': typeof AppResumoRoute
   '/sonhos': typeof AppSonhosRoute
 }
 export interface FileRoutesByTo {
   '/casal': typeof AppCasalRoute
   '/lancamentos': typeof AppLancamentosRoute
   '/notas': typeof AppNotasRoute
+  '/resumo': typeof AppResumoRoute
   '/sonhos': typeof AppSonhosRoute
   '/': typeof AppIndexRoute
 }
@@ -66,20 +74,22 @@ export interface FileRoutesById {
   '/_app/casal': typeof AppCasalRoute
   '/_app/lancamentos': typeof AppLancamentosRoute
   '/_app/notas': typeof AppNotasRoute
+  '/_app/resumo': typeof AppResumoRoute
   '/_app/sonhos': typeof AppSonhosRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/casal' | '/lancamentos' | '/notas' | '/sonhos'
+  fullPaths: '/' | '/casal' | '/lancamentos' | '/notas' | '/resumo' | '/sonhos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/casal' | '/lancamentos' | '/notas' | '/sonhos' | '/'
+  to: '/casal' | '/lancamentos' | '/notas' | '/resumo' | '/sonhos' | '/'
   id:
     | '__root__'
     | '/_app'
     | '/_app/casal'
     | '/_app/lancamentos'
     | '/_app/notas'
+    | '/_app/resumo'
     | '/_app/sonhos'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -111,6 +121,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSonhosRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/resumo': {
+      id: '/_app/resumo'
+      path: '/resumo'
+      fullPath: '/resumo'
+      preLoaderRoute: typeof AppResumoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/notas': {
       id: '/_app/notas'
       path: '/notas'
@@ -139,6 +156,7 @@ interface AppRouteChildren {
   AppCasalRoute: typeof AppCasalRoute
   AppLancamentosRoute: typeof AppLancamentosRoute
   AppNotasRoute: typeof AppNotasRoute
+  AppResumoRoute: typeof AppResumoRoute
   AppSonhosRoute: typeof AppSonhosRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -147,6 +165,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCasalRoute: AppCasalRoute,
   AppLancamentosRoute: AppLancamentosRoute,
   AppNotasRoute: AppNotasRoute,
+  AppResumoRoute: AppResumoRoute,
   AppSonhosRoute: AppSonhosRoute,
   AppIndexRoute: AppIndexRoute,
 }

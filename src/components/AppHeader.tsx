@@ -11,6 +11,7 @@ import { LancamentoModal } from "@/components/LancamentoModal";
 
 const NAV = [
   { to: "/",            label: "Início",      icon: "⌂" },
+  { to: "/resumo",      label: "Resumo",      icon: "▦" },
   { to: "/lancamentos", label: "Lançamentos", icon: "↕" },
   { to: "/sonhos",      label: "Sonhos",      icon: "✦" },
   { to: "/notas",       label: "Notas",       icon: "◈" },
