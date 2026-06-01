@@ -521,11 +521,11 @@ function SonhosPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
           <div
-            className="w-full sm:max-w-md rounded-t-[28px] sm:rounded-[24px] border border-white/[0.08] p-6 animate-fade-up max-h-[92vh] overflow-y-auto"
+            className="w-full sm:max-w-md rounded-t-[28px] sm:rounded-[24px] border border-white/[0.08] p-5 animate-fade-up max-h-[92vh] overflow-y-auto"
             style={{ background: "#131316", boxShadow: "0 -12px 60px rgba(0,0,0,0.7)" }}
           >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="font-serif text-[20px]">{editId ? "Editar Sonho" : "Novo Sonho"}</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-serif text-[18px]">{editId ? "Editar Sonho" : "Novo Sonho"}</h2>
               <button
                 onClick={() => setShowModal(false)}
                 className="size-8 rounded-full bg-white/[0.06] flex items-center justify-center text-muted-foreground hover:text-foreground transition text-[15px]"
@@ -534,17 +534,17 @@ function SonhosPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Foto personalizada */}
               <div>
-                <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground mb-1.5">
                   Foto de capa (opcional)
                 </div>
                 <div
                   onClick={() => !uploading && fileRef.current?.click()}
-                  className={`relative w-full rounded-2xl overflow-hidden cursor-pointer border-2 border-dashed flex items-center justify-center transition-all duration-300 ${uploading ? "opacity-60 cursor-wait" : "hover:border-champagne/40"}`}
+                  className={`relative w-full rounded-xl overflow-hidden cursor-pointer border-2 border-dashed flex items-center justify-center transition-all duration-300 ${uploading ? "opacity-60 cursor-wait" : "hover:border-champagne/40"}`}
                   style={{
-                    aspectRatio: "16/9",
+                    aspectRatio: "16/7",
                     borderColor: form.imageUrl ? "transparent" : "rgba(255,255,255,0.10)",
                     background: form.imageUrl ? "transparent" : "rgba(255,255,255,0.03)",
                   }}
@@ -628,17 +628,17 @@ function SonhosPage() {
               </F>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-5">
               <button
                 onClick={() => { setShowModal(false); setEditId(null); setForm(blank); }}
-                className="flex-1 h-11 rounded-xl border border-white/[0.09] text-[14px] text-muted-foreground hover:text-foreground transition"
+                className="flex-1 h-10 rounded-xl border border-white/[0.09] text-[13.5px] text-muted-foreground hover:text-foreground transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSave}
                 disabled={!form.titulo || !form.valor || saving || uploading}
-                className="flex-1 h-11 rounded-xl text-[14px] font-semibold hover:opacity-90 transition disabled:opacity-40"
+                className="flex-1 h-10 rounded-xl text-[13.5px] font-semibold hover:opacity-90 transition disabled:opacity-40"
                 style={{ background: "var(--gradient-champagne)", color: "oklch(0.18 0.01 60)" }}
               >
                 {saving ? "Salvando…" : "Salvar sonho"}
@@ -656,12 +656,12 @@ function SonhosPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowAporte(null); }}
         >
           <div
-            className="w-full sm:max-w-sm rounded-t-[28px] sm:rounded-[24px] border border-white/[0.08] p-6 animate-fade-up"
+            className="w-full sm:max-w-sm rounded-t-[28px] sm:rounded-[24px] border border-white/[0.08] p-5 animate-fade-up"
             style={{ background: "#131316", boxShadow: "0 -12px 60px rgba(0,0,0,0.7)" }}
           >
-            <div className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Aportar em</div>
-            <h2 className="font-serif text-[22px] italic mb-1">{showAporte.titulo}</h2>
-            <p className="text-muted-foreground text-[13px] mb-5 tabular-nums">
+            <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Aportar em</div>
+            <h2 className="font-serif text-[20px] italic mb-1">{showAporte.titulo}</h2>
+            <p className="text-muted-foreground text-[12.5px] mb-4 tabular-nums">
               {fmt(showAporte.acumulado)} de {fmt(showAporte.valor)} acumulado
             </p>
             <F label="Valor do aporte (R$)">
@@ -674,17 +674,17 @@ function SonhosPage() {
                 autoFocus
               />
             </F>
-            <div className="flex gap-3 mt-5">
+            <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setShowAporte(null)}
-                className="flex-1 h-11 rounded-xl border border-white/[0.09] text-[14px] text-muted-foreground hover:text-foreground transition"
+                className="flex-1 h-10 rounded-xl border border-white/[0.09] text-[13.5px] text-muted-foreground hover:text-foreground transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAporte}
                 disabled={!aporteVal || saving}
-                className="flex-1 h-11 rounded-xl text-[14px] font-semibold hover:opacity-90 transition disabled:opacity-40"
+                className="flex-1 h-10 rounded-xl text-[13.5px] font-semibold hover:opacity-90 transition disabled:opacity-40"
                 style={{ background: "var(--gradient-champagne)", color: "oklch(0.18 0.01 60)" }}
               >
                 {saving ? "Salvando…" : "Confirmar aporte"}
@@ -700,10 +700,10 @@ function SonhosPage() {
           min-width: 0;
           background: rgba(255,255,255,0.05);
           border: 1px solid rgba(255,255,255,0.09);
-          border-radius: 0.75rem;
-          height: 2.75rem;
-          padding: 0 1rem;
-          font-size: 14px;
+          border-radius: 0.625rem;
+          height: 2.5rem;
+          padding: 0 0.875rem;
+          font-size: 13.5px;
           color: var(--color-foreground);
           outline: none;
           transition: border-color 0.2s;
@@ -751,7 +751,7 @@ function SummaryBlock({
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">{label}</div>
+      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground mb-1.5">{label}</div>
       {children}
     </label>
   );

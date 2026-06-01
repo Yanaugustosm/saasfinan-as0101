@@ -176,9 +176,9 @@ function NotasPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="glass rounded-2xl p-6 w-full max-w-md border border-border animate-fade-up">
-            <h2 className="font-serif text-[20px] mb-5">{editId ? "Editar Nota" : "Nova Nota"}</h2>
-            <div className="space-y-4">
+          <div className="glass rounded-2xl p-5 w-full max-w-md border border-border animate-fade-up">
+            <h2 className="font-serif text-[18px] mb-4">{editId ? "Editar Nota" : "Nova Nota"}</h2>
+            <div className="space-y-3">
               <F label="Título *">
                 <input value={form.titulo} onChange={(e) => sf("titulo")(e.target.value)}
                   placeholder="Ex: IPTU 2ª parcela" className="inp" />
@@ -194,7 +194,7 @@ function NotasPage() {
                   ))}
                 </select>
               </F>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5">
                 <F label="Valor">
                   <input type="number" value={form.valor} onChange={(e) => sf("valor")(e.target.value)} placeholder="R$" className="inp" />
                 </F>
@@ -203,20 +203,20 @@ function NotasPage() {
                 </F>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowModal(false); setEditId(null); setForm(blank); }}
-                className="flex-1 h-11 rounded-xl border border-border text-[14px] text-muted-foreground hover:text-foreground transition">
+                className="flex-1 h-10 rounded-xl border border-border text-[13.5px] text-muted-foreground hover:text-foreground transition">
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={!form.titulo || saving}
-                className="flex-1 h-11 rounded-xl bg-foreground text-background text-[14px] font-medium hover:opacity-90 transition disabled:opacity-40">
+                className="flex-1 h-10 rounded-xl bg-foreground text-background text-[13.5px] font-medium hover:opacity-90 transition disabled:opacity-40">
                 {saving ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>
         </div>
       )}
-      <style>{`.inp{width:100%;background:oklch(1 0 0/0.06);border:1px solid var(--color-border);border-radius:0.75rem;min-height:2.75rem;padding:0 1rem;font-size:14px;color:var(--color-foreground);outline:none;}`}</style>
+      <style>{`.inp{width:100%;min-width:0;background:oklch(1 0 0/0.06);border:1px solid var(--color-border);border-radius:0.625rem;min-height:2.5rem;height:2.5rem;padding:0 0.875rem;font-size:13.5px;color:var(--color-foreground);outline:none;}`}</style>
     </div>
   );
 }
@@ -224,7 +224,7 @@ function NotasPage() {
 function F({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">{label}</div>
+      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground mb-1.5">{label}</div>
       {children}
     </label>
   );
