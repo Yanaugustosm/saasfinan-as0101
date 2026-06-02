@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -131,6 +132,10 @@ function SuspendedScreen() {
 
 function AppGate() {
   const { user, profile, group, loading } = useAuth();
+  const pathname = useRouterState({ select: s => s.location.pathname });
+
+  // ── Bypass: Admin Portal cuida da sua própria autenticação ──────────────────
+  if (pathname.startsWith("/admin")) return <Outlet />;
 
   if (loading) {
     return (

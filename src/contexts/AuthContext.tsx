@@ -133,6 +133,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Auto-patch: remover rótulos de "Master Admin" deixados pelo deploy anterior
+      const needsPatch = p.name === "Master Admin" || p.emoji === "🛡️";
+      if (needsPatch) {
+        const displayName = firebaseUser?.displayName ?? userEmail.split("@")[0];
+        const patched = { ...p, name: displayName, emoji: "😊" };
+        await updateDoc(userRef, { name: patched.name, emoji: patched.emoji });
+        setProfile(patched);
+        if (patched.groupId) subscribeToGroup(patched.groupId);
+        return;
+      }
+
       // Perfil normal sem deleção
       setProfile(p);
       if (p.groupId) subscribeToGroup(p.groupId);
@@ -149,8 +160,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {
       uid,
       email,
-      name:      isMaster ? "Master Admin" : (auth.currentUser?.displayName ?? email.split("@")[0]),
-      emoji:     isMaster ? "🛡️" : "😊",
+      name:      auth.currentUser?.displayName ?? email.split("@")[0],
+      emoji:     "😊",
       paletteId: "violet",
       groupId:   null,
       createdAt: new Date().toISOString(),
