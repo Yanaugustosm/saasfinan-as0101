@@ -37,6 +37,8 @@ export interface UserProfile {
   groupId: string | null;
   createdAt: string;
   suspended?: boolean;
+  deletedAt?: string | null;
+  isMaster?: boolean;
 }
 
 export interface GroupData {
@@ -100,12 +102,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function loadProfile(uid: string) {
-    const snap = await getDoc(doc(db, "users", uid));
+    const firebaseUser = auth.currentUser;
+    const userEmail    = firebaseUser?.email ?? "";
+    const isMaster     = userEmail === MASTER_EMAIL;
+    const userRef      = doc(db, "users", uid);
+    const snap         = await getDoc(userRef);
+
+    // ── Profile exists ───────────────────────────────────────────────────────
     if (snap.exists()) {
       const p = snap.data() as UserProfile;
+
+      // Soft-delete: verificar se está marcado como deletado
+      if (p.deletedAt) {
+        const deletedAt  = new Date(p.deletedAt);
+        const diffDays   = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+        if (diffDays <= 7) {
+          // ✅ Dentro de 7 dias → RESTAURAR a conta completamente
+          const restored = { ...p, deletedAt: null, suspended: false };
+          await updateDoc(userRef, { deletedAt: null, suspended: false });
+          setProfile(restored);
+          if (restored.groupId) subscribeToGroup(restored.groupId);
+          return;
+        } else {
+          // ❌ Passou de 7 dias → recriar do zero
+          const fresh = buildFreshProfile(uid, userEmail, isMaster);
+          await setDoc(userRef, fresh);
+          setProfile(fresh);
+          return;
+        }
+      }
+
+      // Perfil normal sem deleção
       setProfile(p);
       if (p.groupId) subscribeToGroup(p.groupId);
+      return;
     }
+
+    // ── Profile NÃO existe → recriar automaticamente ─────────────────────────
+    const fresh = buildFreshProfile(uid, userEmail, isMaster);
+    await setDoc(userRef, fresh);
+    setProfile(fresh);
+  }
+
+  function buildFreshProfile(uid: string, email: string, isMaster: boolean): UserProfile {
+    return {
+      uid,
+      email,
+      name:      isMaster ? "Master Admin" : (auth.currentUser?.displayName ?? email.split("@")[0]),
+      emoji:     isMaster ? "🛡️" : "😊",
+      paletteId: "violet",
+      groupId:   null,
+      createdAt: new Date().toISOString(),
+      isMaster,
+      suspended: false,
+      deletedAt: null,
+    };
   }
 
   function subscribeToGroup(gid: string) {
