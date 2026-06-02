@@ -54,6 +54,7 @@ interface AuthContextValue {
   profile: UserProfile | null;
   group: GroupData | null;
   loading: boolean;
+  isMasterAdmin: boolean;
   register: (data: {
     email: string;
     password: string;
@@ -71,12 +72,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const MASTER_EMAIL = "yandermarssico@gmail.com";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [group, setGroup] = useState<GroupData | null>(null);
   const [loading, setLoading] = useState(true);
   const groupUnsubRef = useRef<(() => void) | null>(null);
+  const isMasterAdmin = user?.email === MASTER_EMAIL;
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -223,6 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         group,
         loading,
+        isMasterAdmin,
         register,
         login,
         logout,
