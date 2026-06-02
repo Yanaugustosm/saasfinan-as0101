@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -24,7 +24,7 @@ const palettes = [
 ];
 
 function CasalPage() {
-  const { group, profile, user, updateGroup, logout, isMasterAdmin } = useAuth();
+  const { group, profile, user, updateGroup, logout } = useAuth();
   const [palette, setPalette] = useState(0);
   const [gname, setGname] = useState(group?.groupName ?? "");
   const [saving, setSaving] = useState(false);
@@ -192,23 +192,12 @@ function CasalPage() {
 
         <footer className="mt-16 mb-4 flex items-center justify-between text-[11.5px] text-muted-foreground">
           <span className="tracking-[0.2em] uppercase">Sincronia</span>
-          <div className="flex items-center gap-4">
-            {isMasterAdmin && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-1.5 text-champagne/70 hover:text-champagne transition"
-              >
-                <i className="ti ti-shield-lock text-[14px]" />
-                Painel Admin
-              </Link>
-            )}
-            <button
-              onClick={logout}
-              className="text-muted-foreground hover:text-red-400 transition"
-            >
-              Sair da conta
-            </button>
-          </div>
+          <button
+            onClick={logout}
+            className="text-muted-foreground hover:text-red-400 transition"
+          >
+            Sair da conta
+          </button>
         </footer>
       </div>
     </div>
