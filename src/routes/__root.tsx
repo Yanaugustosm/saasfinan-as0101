@@ -59,15 +59,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Sincronia — Finanças do Casal" },
       { name: "description", content: "Sistema financeiro compartilhado para casais — controle de receitas, despesas, metas e notas em tempo real." },
       { name: "author", content: "Sincronia" },
       { property: "og:title", content: "Sincronia — Finanças do Casal" },
       { property: "og:description", content: "Construa um futuro juntos com inteligência financeira." },
       { property: "og:type", content: "website" },
+      // PWA — esconde barra do navegador ao abrir via ícone na tela inicial
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: "Sincronia" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "theme-color", content: "#111111" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.json" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
