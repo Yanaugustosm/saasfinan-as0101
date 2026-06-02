@@ -63,20 +63,16 @@ function AdminPage() {
       const usersData = usersSnap.docs.map((d) => d.data() as UserProfile);
       const groupsData = groupsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as GroupData) }));
 
-      // Conta transações de todos os grupos
-      let txCount = 0;
-      await Promise.all(
-        groupsData.map(async (g) => {
-          const txSnap = await getDocs(collection(db, "groups", g.id, "transacoes"));
-          txCount += txSnap.size;
-        })
-      );
+      // Conta transações totais no sistema (na coleção raiz)
+      const txSnap = await getDocs(collection(db, "transacoes"));
+      const txCount = txSnap.size;
 
       setUsers(usersData);
       setGroups(groupsData);
       setStats({ totalUsers: usersData.length, totalGroups: groupsData.length, totalTransactions: txCount });
-    } catch (e) {
-      showToast("Erro ao carregar dados. Verifique as regras do Firestore.", "err");
+    } catch (e: any) {
+      console.error(e);
+      showToast(`Erro: ${e.message}`, "err");
     } finally {
       setLoadingData(false);
     }
@@ -323,24 +319,62 @@ function AdminPage() {
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // MASTER ADMIN — acesso total
-    match /{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.token.email == "yandermarssico@gmail.com";
+    // ── Helper: verifica se o usuário é membro do grupo ──────────────────────
+    function isMember(groupId) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/groups/$(groupId))
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
     }
 
-    // Usuários — lê/escreve apenas seus próprios dados
+    // ── Helper: verifica se o usuário é o DONO SOBERANO (Email Master) ───────
+    function isMaster() {
+      return request.auth != null && request.auth.token.email == "yandermarssico@gmail.com";
+    }
+
+    // ── Perfis de usuário ─────────────────────────────────────────────────────
     match /users/{uid} {
-      allow read, write: if request.auth.uid == uid;
+      allow read, write, delete: if (request.auth != null && request.auth.uid == uid) || isMaster();
     }
 
-    // Grupos — acesso apenas para membros do grupo
+    // ── Convites (NOVA COLEÇÃO) ───────────────────────────────────────────────
+    match /invites/{code} {
+      allow read   : if request.auth != null || isMaster();
+      allow create : if request.auth != null || isMaster();
+      allow update : if isMaster();
+      allow delete : if request.auth != null || isMaster();
+    }
+
+    // ── Grupos (casais/famílias) ──────────────────────────────────────────────
     match /groups/{groupId} {
-      allow read, write: if request.auth.uid in resource.data.members;
-      match /transacoes/{txId} {
-        allow read, write: if request.auth.uid in
-          get(/databases/$(database)/documents/groups/$(groupId)).data.members;
-      }
+      allow read, delete: if (request.auth != null && request.auth.uid in resource.data.members) || isMaster();
+      allow create : if request.auth != null || isMaster();
+
+      allow update : if isMaster() || (request.auth != null && (
+        request.auth.uid in resource.data.members
+        ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['members', 'memberProfiles'])
+          && request.auth.uid in request.resource.data.members
+          && !(request.auth.uid in resource.data.members)
+        )
+      ));
+    }
+
+    // ── Coleções do Grupo (Lançamentos, Notas, Sonhos) ────────────────────────
+    match /transacoes/{id} {
+      allow read, update, delete : if isMember(resource.data.groupId) || isMaster();
+      allow create               : if isMember(request.resource.data.groupId) || isMaster();
+    }
+
+    match /notas/{id} {
+      allow read, update, delete : if isMember(resource.data.groupId) || isMaster();
+      allow create               : if isMember(request.resource.data.groupId) || isMaster();
+    }
+
+    match /metas/{id} {
+      allow read, update, delete : if isMember(resource.data.groupId) || isMaster();
+      allow create               : if isMember(request.resource.data.groupId) || isMaster();
     }
   }
 }`}
