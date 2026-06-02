@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   collection,
   getDocs,
@@ -10,512 +10,732 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import { useAuth, type UserProfile, type GroupData } from "@/contexts/AuthContext";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/admin")({
-  head: () => ({
-    meta: [{ title: "Master Admin · Sincronia" }],
-  }),
+  head: () => ({ meta: [{ title: "Master Admin · Sincronia" }] }),
   component: AdminPage,
 });
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface AdminStats {
-  totalUsers: number;
-  totalGroups: number;
-  totalTransactions: number;
-}
+// ─── Constants ────────────────────────────────────────────────────────────────
+type Tab = "overview" | "users" | "groups";
 
 // ─── AdminPage ────────────────────────────────────────────────────────────────
 function AdminPage() {
-  const { isMasterAdmin, loading } = useAuth();
+  const { isMasterAdmin, loading, user, profile } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"overview" | "users" | "groups">("overview");
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [groups, setGroups] = useState<(GroupData & { id: string })[]>([]);
-  const [stats, setStats] = useState<AdminStats>({ totalUsers: 0, totalGroups: 0, totalTransactions: 0 });
-  const [loadingData, setLoadingData] = useState(true);
-  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editingGroup, setEditingGroup] = useState<(GroupData & { id: string }) | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ type: "user" | "group"; id: string; name: string } | null>(null);
-  const [toast, setToast] = useState<{ msg: string; type: "ok" | "err" } | null>(null);
 
-  // Proteção de rota — só o mestre acessa
+  const [tab, setTab]               = useState<Tab>("overview");
+  const [users, setUsers]           = useState<UserProfile[]>([]);
+  const [groups, setGroups]         = useState<(GroupData & { id: string })[]>([]);
+  const [txCount, setTxCount]       = useState(0);
+  const [loadingData, setLoadingData] = useState(true);
+  const [editingUser, setEditingUser]   = useState<UserProfile | null>(null);
+  const [editingGroup, setEditingGroup] = useState<(GroupData & { id: string }) | null>(null);
+  const [confirmDel, setConfirmDel] = useState<{ type: "user" | "group"; id: string; name: string } | null>(null);
+  const [toast, setToast]           = useState<{ msg: string; ok: boolean } | null>(null);
+  const [userSearch, setUserSearch] = useState("");
+  const [groupSearch, setGroupSearch] = useState("");
+
+  /* ── Guards ── */
   useEffect(() => {
-    if (!loading && !isMasterAdmin) {
-      navigate({ to: "/" });
-    }
+    if (!loading && !isMasterAdmin) navigate({ to: "/" });
   }, [loading, isMasterAdmin, navigate]);
 
-  const showToast = (msg: string, type: "ok" | "err" = "ok") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+  /* ── Toast ── */
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3500);
   };
 
+  /* ── Fetch all data ── */
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [usersSnap, groupsSnap] = await Promise.all([
+      const [usersSnap, groupsSnap, txSnap] = await Promise.all([
         getDocs(query(collection(db, "users"), orderBy("createdAt", "desc"))),
         getDocs(query(collection(db, "groups"), orderBy("createdAt", "desc"))),
+        getDocs(collection(db, "transacoes")),
       ]);
-
-      const usersData = usersSnap.docs.map((d) => d.data() as UserProfile);
-      const groupsData = groupsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as GroupData) }));
-
-      // Conta transações totais no sistema (na coleção raiz)
-      const txSnap = await getDocs(collection(db, "transacoes"));
-      const txCount = txSnap.size;
-
-      setUsers(usersData);
-      setGroups(groupsData);
-      setStats({ totalUsers: usersData.length, totalGroups: groupsData.length, totalTransactions: txCount });
+      setUsers(usersSnap.docs.map((d) => d.data() as UserProfile));
+      setGroups(groupsSnap.docs.map((d) => ({ id: d.id, ...(d.data() as GroupData) })));
+      setTxCount(txSnap.size);
     } catch (e: any) {
-      console.error(e);
-      showToast(`Erro: ${e.message}`, "err");
+      showToast(`Erro: ${e?.message ?? "Verifique as regras do Firestore"}`, false);
     } finally {
       setLoadingData(false);
     }
   }, []);
 
-  useEffect(() => {
-    if (isMasterAdmin) loadData();
-  }, [isMasterAdmin, loadData]);
+  useEffect(() => { if (isMasterAdmin) loadData(); }, [isMasterAdmin, loadData]);
 
-  const handleDeleteUser = async (uid: string) => {
+  /* ── Curva de crescimento de usuários ── */
+  const growthData = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const u of users) {
+      if (!u.createdAt) continue;
+      const day = u.createdAt.slice(0, 10);
+      map.set(day, (map.get(day) ?? 0) + 1);
+    }
+    const sorted = Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+    let acc = 0;
+    return sorted.map(([date, count]) => {
+      acc += count;
+      return {
+        date: new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }),
+        total: acc,
+      };
+    });
+  }, [users]);
+
+  /* ── Delete ── */
+  const doDelete = async () => {
+    if (!confirmDel) return;
     try {
-      await deleteDoc(doc(db, "users", uid));
-      setUsers((prev) => prev.filter((u) => u.uid !== uid));
-      setStats((s) => ({ ...s, totalUsers: s.totalUsers - 1 }));
-      showToast("Usuário excluído com sucesso.");
-    } catch {
-      showToast("Erro ao excluir usuário.", "err");
+      await deleteDoc(doc(db, confirmDel.type === "user" ? "users" : "groups", confirmDel.id));
+      if (confirmDel.type === "user") setUsers((p) => p.filter((u) => u.uid !== confirmDel.id));
+      else setGroups((p) => p.filter((g) => g.id !== confirmDel.id));
+      showToast(`${confirmDel.type === "user" ? "Usuário" : "Grupo"} excluído com sucesso.`);
+    } catch (e: any) {
+      showToast(`Erro ao excluir: ${e?.message}`, false);
     } finally {
-      setConfirmDelete(null);
+      setConfirmDel(null);
     }
   };
 
-  const handleDeleteGroup = async (id: string) => {
+  /* ── Save user ── */
+  const saveUser = async () => {
+    if (!editingUser) return;
     try {
-      await deleteDoc(doc(db, "groups", id));
-      setGroups((prev) => prev.filter((g) => g.id !== id));
-      setStats((s) => ({ ...s, totalGroups: s.totalGroups - 1 }));
-      showToast("Grupo excluído com sucesso.");
-    } catch {
-      showToast("Erro ao excluir grupo.", "err");
-    } finally {
-      setConfirmDelete(null);
-    }
-  };
-
-  const handleSaveUser = async (u: UserProfile) => {
-    try {
-      await updateDoc(doc(db, "users", u.uid), { name: u.name, email: u.email });
-      setUsers((prev) => prev.map((x) => (x.uid === u.uid ? u : x)));
+      await updateDoc(doc(db, "users", editingUser.uid), { name: editingUser.name, email: editingUser.email, emoji: editingUser.emoji });
+      setUsers((p) => p.map((u) => (u.uid === editingUser.uid ? editingUser : u)));
       setEditingUser(null);
-      showToast("Usuário atualizado com sucesso.");
-    } catch {
-      showToast("Erro ao salvar usuário.", "err");
-    }
+      showToast("Usuário atualizado.");
+    } catch (e: any) { showToast(`Erro: ${e?.message}`, false); }
   };
 
-  const handleSaveGroup = async (g: GroupData & { id: string }) => {
+  /* ── Save group ── */
+  const saveGroup = async () => {
+    if (!editingGroup) return;
     try {
-      await updateDoc(doc(db, "groups", g.id), { groupName: g.groupName, groupEmoji: g.groupEmoji });
-      setGroups((prev) => prev.map((x) => (x.id === g.id ? g : x)));
+      await updateDoc(doc(db, "groups", editingGroup.id), { groupName: editingGroup.groupName, groupEmoji: editingGroup.groupEmoji });
+      setGroups((p) => p.map((g) => (g.id === editingGroup.id ? editingGroup : g)));
       setEditingGroup(null);
-      showToast("Grupo atualizado com sucesso.");
-    } catch {
-      showToast("Erro ao salvar grupo.", "err");
-    }
+      showToast("Grupo atualizado.");
+    } catch (e: any) { showToast(`Erro: ${e?.message}`, false); }
   };
 
   if (loading || !isMasterAdmin) return null;
 
+  const filteredUsers  = users.filter((u) =>
+    !userSearch || `${u.name} ${u.email}`.toLowerCase().includes(userSearch.toLowerCase())
+  );
+  const filteredGroups = groups.filter((g) =>
+    !groupSearch || g.groupName?.toLowerCase().includes(groupSearch.toLowerCase())
+  );
+
   return (
-    <div className="hero-bg min-h-screen">
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-5 right-5 z-[100] px-5 py-3 rounded-xl text-[13px] font-medium shadow-lg backdrop-blur-sm border transition-all ${
-            toast.type === "ok"
-              ? "bg-[oklch(0.74_0.12_145/0.15)] border-[oklch(0.74_0.12_145/0.3)] text-[oklch(0.74_0.12_145)]"
-              : "bg-red-500/10 border-red-500/30 text-red-400"
-          }`}
-        >
-          {toast.msg}
-        </div>
-      )}
+    /* Full-screen overlay que cobre o layout do casal por completo */
+    <div className="fixed inset-0 z-[200] flex" style={{ background: "#0a0a0b", fontFamily: "inherit" }}>
 
-      {/* Modal de Confirmação de Exclusão */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-sm">
-            <div className="text-[22px] font-serif mb-2">Confirmar exclusão</div>
-            <p className="text-[13px] text-muted-foreground mb-6">
-              Você está prestes a excluir permanentemente <strong className="text-foreground">{confirmDelete.name}</strong>.
-              Esta ação não pode ser desfeita.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 h-10 rounded-xl border border-border text-[13px] text-muted-foreground hover:text-foreground transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() =>
-                  confirmDelete.type === "user"
-                    ? handleDeleteUser(confirmDelete.id)
-                    : handleDeleteGroup(confirmDelete.id)
-                }
-                className="flex-1 h-10 rounded-xl bg-red-500/20 border border-red-500/40 text-red-400 text-[13px] font-medium hover:bg-red-500/30 transition"
-              >
-                Excluir definitivamente
-              </button>
+      {/* ══════════════════ SIDEBAR ══════════════════ */}
+      <aside
+        className="flex-shrink-0 flex flex-col border-r h-full"
+        style={{ width: 260, borderColor: "rgba(255,255,255,0.06)", background: "#0f0f12" }}
+      >
+        {/* Logo */}
+        <div className="px-6 pt-7 pb-6 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-3">
+            <div
+              className="size-8 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg,#C9A96E,#a07940)" }}
+            >
+              <i className="ti ti-shield-bolt text-[15px] text-[#0a0a0b]" />
+            </div>
+            <div>
+              <div className="text-[13px] font-semibold text-white leading-none">Sincronia</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#C9A96E" }}>Master Control</div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Modal Editar Usuário */}
-      {editingUser && (
-        <EditModal
-          title="Editar Usuário"
-          onClose={() => setEditingUser(null)}
-          onSave={() => handleSaveUser(editingUser)}
-        >
-          <Field label="Nome">
-            <input
-              value={editingUser.name}
-              onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-              className="w-full bg-transparent border border-border rounded-xl h-10 px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
-          <Field label="E-mail">
-            <input
-              value={editingUser.email}
-              onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-              className="w-full bg-transparent border border-border rounded-xl h-10 px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
-          <Field label="Emoji">
-            <input
-              value={editingUser.emoji}
-              onChange={(e) => setEditingUser({ ...editingUser, emoji: e.target.value })}
-              className="w-full bg-transparent border border-border rounded-xl h-10 px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
-        </EditModal>
-      )}
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5">
+          {([
+            { id: "overview", icon: "ti-layout-dashboard", label: "Dashboard" },
+            { id: "users",    icon: "ti-users",            label: `Usuários (${users.length})` },
+            { id: "groups",   icon: "ti-heart",            label: `Casais (${groups.length})` },
+          ] as { id: Tab; icon: string; label: string }[]).map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`w-full flex items-center gap-3 h-9 px-3 rounded-lg text-[13px] transition-all ${
+                tab === item.id
+                  ? "text-white font-medium"
+                  : "text-white/40 hover:text-white/70"
+              }`}
+              style={tab === item.id ? { background: "rgba(201,169,110,0.12)", color: "#C9A96E" } : {}}
+            >
+              <i className={`ti ${item.icon} text-[15px]`} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
 
-      {/* Modal Editar Grupo */}
-      {editingGroup && (
-        <EditModal
-          title="Editar Grupo"
-          onClose={() => setEditingGroup(null)}
-          onSave={() => handleSaveGroup(editingGroup)}
-        >
-          <Field label="Nome do Grupo">
-            <input
-              value={editingGroup.groupName}
-              onChange={(e) => setEditingGroup({ ...editingGroup, groupName: e.target.value })}
-              className="w-full bg-transparent border border-border rounded-xl h-10 px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
-          <Field label="Emoji do Grupo">
-            <input
-              value={editingGroup.groupEmoji}
-              onChange={(e) => setEditingGroup({ ...editingGroup, groupEmoji: e.target.value })}
-              className="w-full bg-transparent border border-border rounded-xl h-10 px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </Field>
-          <Field label="Código de Convite">
-            <input
-              value={editingGroup.inviteCode}
-              onChange={(e) => setEditingGroup({ ...editingGroup, inviteCode: e.target.value })}
-              className="w-full bg-transparent border border-border rounded-xl h-10 px-3 text-[13px] focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-            />
-          </Field>
-        </EditModal>
-      )}
-
-      <div className="mx-auto max-w-[1200px] px-5 lg:px-8 pt-10 lg:pt-14 pb-20">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] uppercase tracking-[0.2em] text-champagne/70 px-2 py-0.5 rounded-full border border-champagne/20 bg-champagne/5">
-                Master Admin
-              </span>
+        {/* Footer sidebar */}
+        <div className="px-4 py-5 border-t space-y-3" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          {/* Usuário logado */}
+          <div className="flex items-center gap-2.5 px-1">
+            <div
+              className="size-7 rounded-full flex items-center justify-center text-[13px]"
+              style={{ background: "rgba(201,169,110,0.15)", color: "#C9A96E" }}
+            >
+              {profile?.emoji ?? "👑"}
             </div>
-            <h1 className="font-serif text-[36px] leading-[1.1]">Painel de Controle</h1>
-            <p className="text-[13px] text-muted-foreground mt-1">
-              Visão total do sistema — usuários, grupos e lançamentos.
-            </p>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12px] text-white leading-none truncate">{profile?.name ?? "Admin"}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                {user?.email}
+              </div>
+            </div>
           </div>
+
+          {/* Botões */}
+          <Link
+            to="/"
+            className="w-full flex items-center gap-2 h-8 px-3 rounded-lg text-[12px] transition-all text-white/40 hover:text-white/70"
+          >
+            <i className="ti ti-arrow-left text-[14px]" />
+            Voltar ao app
+          </Link>
+
           <button
             onClick={loadData}
             disabled={loadingData}
-            className="h-9 px-4 rounded-full border border-border text-[12.5px] text-muted-foreground hover:text-foreground transition flex items-center gap-2 disabled:opacity-40"
+            className="w-full flex items-center gap-2 h-8 px-3 rounded-lg text-[12px] transition-all text-white/40 hover:text-white/70 disabled:opacity-40"
           >
             <i className={`ti ti-refresh text-[14px] ${loadingData ? "animate-spin" : ""}`} />
-            Atualizar
+            Atualizar dados
           </button>
         </div>
+      </aside>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {[
-            { icon: "ti-users", label: "Usuários", value: stats.totalUsers, color: "text-[oklch(0.74_0.12_145)]" },
-            { icon: "ti-heart", label: "Casais", value: stats.totalGroups, color: "text-champagne" },
-            { icon: "ti-arrows-exchange", label: "Lançamentos", value: stats.totalTransactions, color: "text-[oklch(0.8_0.1_280)]" },
-          ].map(({ icon, label, value, color }) => (
-            <div key={label} className="glass rounded-2xl px-6 py-5">
-              <div className="flex items-center gap-2 mb-3">
-                <i className={`ti ${icon} text-[18px] ${color}`} />
-                <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">{label}</span>
-              </div>
-              <div className={`text-[32px] font-semibold tabular ${color}`}>
-                {loadingData ? "—" : value}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* ══════════════════ MAIN AREA ══════════════════ */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
 
-        {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white/[0.03] rounded-xl border border-border mb-6 w-fit">
-          {(["overview", "users", "groups"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex items-center gap-2 h-8 px-4 rounded-lg text-[12px] font-medium transition-all ${
-                tab === t ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
-              }`}
+        {/* Topbar */}
+        <div
+          className="flex-shrink-0 flex items-center justify-between px-8 h-14 border-b"
+          style={{ borderColor: "rgba(255,255,255,0.06)", background: "#0f0f12" }}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="text-[10px] uppercase tracking-[0.16em] px-2.5 py-1 rounded-full border font-medium"
+              style={{ color: "#C9A96E", borderColor: "rgba(201,169,110,0.25)", background: "rgba(201,169,110,0.06)" }}
             >
-              {t === "overview" && <i className="ti ti-layout-dashboard text-[13px]" />}
-              {t === "users" && <i className="ti ti-users text-[13px]" />}
-              {t === "groups" && <i className="ti ti-heart text-[13px]" />}
-              {t === "overview" ? "Visão Geral" : t === "users" ? `Usuários (${stats.totalUsers})` : `Casais (${stats.totalGroups})`}
-            </button>
-          ))}
+              Master Admin
+            </span>
+            <span className="text-[13px] text-white/30">/</span>
+            <span className="text-[13px] text-white/60 capitalize">
+              {tab === "overview" ? "Dashboard" : tab === "users" ? "Usuários" : "Casais"}
+            </span>
+          </div>
+          <div className="text-[11.5px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+            {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+          </div>
         </div>
 
-        {/* Tab: Visão Geral */}
-        {tab === "overview" && (
-          <div className="space-y-4">
-            {/* Regras do Firestore */}
-            <div className="glass rounded-2xl p-6 border border-champagne/20">
-              <div className="flex items-center gap-3 mb-4">
-                <i className="ti ti-shield-lock text-[20px] text-champagne" />
-                <div>
-                  <div className="text-[14px] font-medium">Regras de Segurança do Firestore</div>
-                  <div className="text-[12px] text-muted-foreground">Você precisa colar isto no Console do Firebase para o Admin funcionar</div>
+        {/* Page content */}
+        <div className="flex-1 p-8">
+
+          {/* ─── TOAST ─── */}
+          {toast && (
+            <div
+              className={`fixed top-5 right-5 z-[300] px-5 py-3 rounded-xl text-[13px] font-medium border backdrop-blur-sm transition-all`}
+              style={{
+                background: toast.ok ? "rgba(116,185,101,0.1)" : "rgba(239,68,68,0.1)",
+                borderColor: toast.ok ? "rgba(116,185,101,0.3)" : "rgba(239,68,68,0.3)",
+                color: toast.ok ? "#74b965" : "#f87171",
+              }}
+            >
+              {toast.msg}
+            </div>
+          )}
+
+          {/* ─── CONFIRM DELETE MODAL ─── */}
+          {confirmDel && (
+            <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+              <div
+                className="w-full max-w-sm rounded-2xl border p-6"
+                style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.08)" }}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="size-9 rounded-xl bg-red-500/10 flex items-center justify-center">
+                    <i className="ti ti-alert-triangle text-red-400 text-[18px]" />
+                  </div>
+                  <div>
+                    <div className="text-[15px] font-medium text-white">Confirmar exclusão</div>
+                    <div className="text-[11.5px]" style={{ color: "rgba(255,255,255,0.4)" }}>Ação irreversível</div>
+                  </div>
+                </div>
+                <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  Excluir permanentemente <strong className="text-white">{confirmDel.name}</strong> do banco de dados?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmDel(null)}
+                    className="flex-1 h-10 rounded-xl text-[13px] border transition"
+                    style={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)" }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={doDelete}
+                    className="flex-1 h-10 rounded-xl text-[13px] font-medium bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 transition"
+                  >
+                    Excluir
+                  </button>
                 </div>
               </div>
-              <pre className="bg-black/40 rounded-xl p-4 text-[11.5px] text-green-400/80 font-mono overflow-x-auto leading-relaxed border border-white/5">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-
-    // ── Helper: verifica se o usuário é membro do grupo ──────────────────────
-    function isMember(groupId) {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/groups/$(groupId))
-        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
-    }
-
-    // ── Helper: verifica se o usuário é o DONO SOBERANO (Email Master) ───────
-    function isMaster() {
-      return request.auth != null && request.auth.token.email == "yandermarssico@gmail.com";
-    }
-
-    // ── Perfis de usuário ─────────────────────────────────────────────────────
-    match /users/{uid} {
-      allow read, write, delete: if (request.auth != null && request.auth.uid == uid) || isMaster();
-    }
-
-    // ── Convites (NOVA COLEÇÃO) ───────────────────────────────────────────────
-    match /invites/{code} {
-      allow read   : if request.auth != null || isMaster();
-      allow create : if request.auth != null || isMaster();
-      allow update : if isMaster();
-      allow delete : if request.auth != null || isMaster();
-    }
-
-    // ── Grupos (casais/famílias) ──────────────────────────────────────────────
-    match /groups/{groupId} {
-      allow read, delete: if (request.auth != null && request.auth.uid in resource.data.members) || isMaster();
-      allow create : if request.auth != null || isMaster();
-
-      allow update : if isMaster() || (request.auth != null && (
-        request.auth.uid in resource.data.members
-        ||
-        (
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['members', 'memberProfiles'])
-          && request.auth.uid in request.resource.data.members
-          && !(request.auth.uid in resource.data.members)
-        )
-      ));
-    }
-
-    // ── Coleções do Grupo (Lançamentos, Notas, Sonhos) ────────────────────────
-    match /transacoes/{id} {
-      allow read, update, delete : if isMember(resource.data.groupId) || isMaster();
-      allow create               : if isMember(request.resource.data.groupId) || isMaster();
-    }
-
-    match /notas/{id} {
-      allow read, update, delete : if isMember(resource.data.groupId) || isMaster();
-      allow create               : if isMember(request.resource.data.groupId) || isMaster();
-    }
-
-    match /metas/{id} {
-      allow read, update, delete : if isMember(resource.data.groupId) || isMaster();
-      allow create               : if isMember(request.resource.data.groupId) || isMaster();
-    }
-  }
-}`}
-              </pre>
-              <p className="mt-3 text-[11.5px] text-muted-foreground">
-                Acesse: <span className="text-champagne">console.firebase.google.com</span> → Seu projeto → Firestore → Regras → Cole o código acima → Publicar.
-              </p>
             </div>
+          )}
 
-            {/* Últimos usuários */}
-            <div className="glass rounded-2xl p-6">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-4">Últimos cadastros</div>
-              {loadingData ? (
-                <div className="text-[13px] text-muted-foreground">Carregando…</div>
-              ) : users.slice(0, 5).map((u) => (
-                <div key={u.uid} className="flex items-center gap-3 py-2.5 border-b border-border/40 last:border-0">
-                  <span className="text-2xl">{u.emoji}</span>
-                  <div className="flex-1">
-                    <div className="text-[13px]">{u.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{u.email}</div>
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "—"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          {/* ─── EDIT USER MODAL ─── */}
+          {editingUser && (
+            <EditModal title="Editar Usuário" onClose={() => setEditingUser(null)} onSave={saveUser}>
+              <AdminField label="Nome">
+                <AdminInput value={editingUser.name} onChange={(v) => setEditingUser({ ...editingUser, name: v })} />
+              </AdminField>
+              <AdminField label="E-mail">
+                <AdminInput value={editingUser.email} onChange={(v) => setEditingUser({ ...editingUser, email: v })} />
+              </AdminField>
+              <AdminField label="Emoji / Avatar">
+                <AdminInput value={editingUser.emoji} onChange={(v) => setEditingUser({ ...editingUser, emoji: v })} />
+              </AdminField>
+            </EditModal>
+          )}
 
-        {/* Tab: Usuários */}
-        {tab === "users" && (
-          <div className="glass rounded-2xl overflow-hidden">
-            {/* Cabeçalho da tabela */}
-            <div className="grid grid-cols-[2fr_2fr_1fr_auto] gap-3 px-5 py-3 border-b border-border bg-white/[0.02]">
-              <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Usuário</span>
-              <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">E-mail</span>
-              <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Cadastro</span>
-              <span className="w-20" />
-            </div>
+          {/* ─── EDIT GROUP MODAL ─── */}
+          {editingGroup && (
+            <EditModal title="Editar Casal" onClose={() => setEditingGroup(null)} onSave={saveGroup}>
+              <AdminField label="Nome do Grupo">
+                <AdminInput value={editingGroup.groupName} onChange={(v) => setEditingGroup({ ...editingGroup, groupName: v })} />
+              </AdminField>
+              <AdminField label="Emoji">
+                <AdminInput value={editingGroup.groupEmoji} onChange={(v) => setEditingGroup({ ...editingGroup, groupEmoji: v })} />
+              </AdminField>
+              <AdminField label="Código de Convite">
+                <AdminInput value={editingGroup.inviteCode} onChange={(v) => setEditingGroup({ ...editingGroup, inviteCode: v })} mono />
+              </AdminField>
+            </EditModal>
+          )}
 
-            {loadingData ? (
-              <div className="px-5 py-8 text-[13px] text-muted-foreground">Carregando usuários…</div>
-            ) : users.length === 0 ? (
-              <div className="px-5 py-8 text-[13px] text-muted-foreground">Nenhum usuário encontrado. Verifique as regras do Firestore.</div>
-            ) : users.map((u) => (
-              <div
-                key={u.uid}
-                className="grid grid-cols-[2fr_2fr_1fr_auto] gap-3 items-center px-5 py-3.5 border-b border-border/40 last:border-0 hover:bg-white/[0.02] transition"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-xl shrink-0">{u.emoji || "👤"}</span>
-                  <span className="text-[13px] truncate">{u.name}</span>
-                  {u.email === "yandermarssico@gmail.com" && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-champagne/10 text-champagne border border-champagne/20 shrink-0">MASTER</span>
-                  )}
-                </div>
-                <span className="text-[12.5px] text-muted-foreground truncate">{u.email}</span>
-                <span className="text-[12px] text-muted-foreground">
-                  {u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "—"}
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setEditingUser(u)}
-                    className="h-7 w-7 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition flex items-center justify-center"
-                    title="Editar"
+          {/* ══ TAB: DASHBOARD ══ */}
+          {tab === "overview" && (
+            <div className="space-y-6">
+              {/* Título */}
+              <div>
+                <h1 className="text-[26px] font-semibold text-white leading-none">Dashboard</h1>
+                <p className="text-[13px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  Visão em tempo real do Sincronia
+                </p>
+              </div>
+
+              {/* Metric Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: "Usuários", value: users.length, icon: "ti-users", color: "#C9A96E", bg: "rgba(201,169,110,0.08)" },
+                  { label: "Casais",   value: groups.length, icon: "ti-heart", color: "#74b965", bg: "rgba(116,185,101,0.08)" },
+                  { label: "Lançamentos", value: txCount, icon: "ti-arrows-exchange", color: "#7c8cf8", bg: "rgba(124,140,248,0.08)" },
+                ].map(({ label, value, icon, color, bg }) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl border p-5 flex flex-col gap-3"
+                    style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.06)" }}
                   >
-                    <i className="ti ti-pencil text-[13px]" />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {label}
+                      </span>
+                      <div className="size-8 rounded-lg flex items-center justify-center" style={{ background: bg }}>
+                        <i className={`ti ${icon} text-[15px]`} style={{ color }} />
+                      </div>
+                    </div>
+                    <div className="text-[36px] font-semibold leading-none" style={{ color }}>
+                      {loadingData ? "—" : value}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Growth Chart */}
+              <div
+                className="rounded-2xl border p-6"
+                style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <div className="text-[14px] font-medium text-white">Crescimento de Usuários</div>
+                    <div className="text-[12px] mt-0.5" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      Acumulado ao longo do tempo
+                    </div>
+                  </div>
+                  <div
+                    className="text-[12px] px-3 py-1.5 rounded-lg border"
+                    style={{ color: "#C9A96E", borderColor: "rgba(201,169,110,0.2)", background: "rgba(201,169,110,0.06)" }}
+                  >
+                    {users.length} total
+                  </div>
+                </div>
+
+                {growthData.length > 1 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <AreaChart data={growthData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                      <defs>
+                        <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stopColor="#C9A96E" stopOpacity={0.3} />
+                          <stop offset="100%" stopColor="#C9A96E" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 10 }}
+                        axisLine={false}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#1c1c22",
+                          border: "1px solid rgba(201,169,110,0.2)",
+                          borderRadius: 10,
+                          fontSize: 12,
+                          color: "#fff",
+                        }}
+                        itemStyle={{ color: "#C9A96E" }}
+                        cursor={{ stroke: "rgba(201,169,110,0.3)", strokeWidth: 1 }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="total"
+                        stroke="#C9A96E"
+                        strokeWidth={2}
+                        fill="url(#goldGrad)"
+                        dot={false}
+                        activeDot={{ r: 4, fill: "#C9A96E", stroke: "#0a0a0b", strokeWidth: 2 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div
+                    className="h-[200px] flex items-center justify-center text-[13px]"
+                    style={{ color: "rgba(255,255,255,0.25)" }}
+                  >
+                    {loadingData ? "Carregando dados…" : "Dados insuficientes para exibir o gráfico"}
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Users */}
+              <div
+                className="rounded-2xl border overflow-hidden"
+                style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  <div className="text-[13px] font-medium text-white">Últimos cadastros</div>
+                  <button
+                    onClick={() => setTab("users")}
+                    className="text-[11.5px] transition"
+                    style={{ color: "#C9A96E" }}
+                  >
+                    Ver todos →
                   </button>
-                  {u.email !== "yandermarssico@gmail.com" && (
-                    <button
-                      onClick={() => setConfirmDelete({ type: "user", id: u.uid, name: u.name })}
-                      className="h-7 w-7 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition flex items-center justify-center"
-                      title="Excluir"
+                </div>
+                {loadingData ? (
+                  <div className="px-6 py-8 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>Carregando…</div>
+                ) : users.slice(0, 6).map((u, i) => (
+                  <div
+                    key={u.uid}
+                    className="flex items-center gap-4 px-6 py-3.5 transition"
+                    style={{
+                      borderBottom: i < 5 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    }}
+                  >
+                    <div
+                      className="size-9 rounded-xl flex items-center justify-center text-lg shrink-0"
+                      style={{ background: "rgba(255,255,255,0.05)" }}
                     >
-                      <i className="ti ti-trash text-[13px]" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tab: Grupos/Casais */}
-        {tab === "groups" && (
-          <div className="glass rounded-2xl overflow-hidden">
-            {/* Cabeçalho da tabela */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_auto] gap-3 px-5 py-3 border-b border-border bg-white/[0.02]">
-              <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Grupo</span>
-              <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Membros</span>
-              <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Criado em</span>
-              <span className="w-20" />
-            </div>
-
-            {loadingData ? (
-              <div className="px-5 py-8 text-[13px] text-muted-foreground">Carregando grupos…</div>
-            ) : groups.length === 0 ? (
-              <div className="px-5 py-8 text-[13px] text-muted-foreground">Nenhum grupo encontrado. Verifique as regras do Firestore.</div>
-            ) : groups.map((g) => (
-              <div
-                key={g.id}
-                className="grid grid-cols-[2fr_1fr_1fr_auto] gap-3 items-center px-5 py-3.5 border-b border-border/40 last:border-0 hover:bg-white/[0.02] transition"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="text-xl shrink-0">{g.groupEmoji || "🏠"}</span>
-                  <div className="min-w-0">
-                    <div className="text-[13px] truncate">{g.groupName}</div>
-                    <div className="text-[10.5px] text-muted-foreground font-mono">{g.inviteCode}</div>
+                      {u.emoji || "👤"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] text-white truncate">{u.name}</div>
+                      <div className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.3)" }}>{u.email}</div>
+                    </div>
+                    <div className="text-[11px] shrink-0" style={{ color: "rgba(255,255,255,0.25)" }}>
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "—"}
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ══ TAB: USERS ══ */}
+          {tab === "users" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-[26px] font-semibold text-white leading-none">Usuários</h1>
+                  <p className="text-[13px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    {users.length} cadastros no banco de dados
+                  </p>
                 </div>
-                <span className="text-[12.5px] text-muted-foreground">{g.members?.length ?? 0} membro(s)</span>
-                <span className="text-[12px] text-muted-foreground">
-                  {g.createdAt ? new Date(g.createdAt).toLocaleDateString("pt-BR") : "—"}
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setEditingGroup(g)}
-                    className="h-7 w-7 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-white/[0.05] transition flex items-center justify-center"
-                    title="Editar"
-                  >
-                    <i className="ti ti-pencil text-[13px]" />
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete({ type: "group", id: g.id, name: g.groupName })}
-                    className="h-7 w-7 rounded-lg border border-red-500/20 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition flex items-center justify-center"
-                    title="Excluir"
-                  >
-                    <i className="ti ti-trash text-[13px]" />
-                  </button>
+                {/* Search */}
+                <div
+                  className="flex items-center gap-2 h-9 px-3.5 rounded-xl border text-[13px]"
+                  style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.08)" }}
+                >
+                  <i className="ti ti-search text-[14px]" style={{ color: "rgba(255,255,255,0.3)" }} />
+                  <input
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="Buscar usuário…"
+                    className="bg-transparent outline-none w-44 text-white"
+                    style={{ caretColor: "#C9A96E", "::placeholder": { color: "rgba(255,255,255,0.25)" } } as any}
+                  />
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+
+              <div
+                className="rounded-2xl border overflow-hidden"
+                style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                {/* Header */}
+                <div
+                  className="grid px-6 py-3 border-b"
+                  style={{
+                    gridTemplateColumns: "2fr 2fr 1fr 1fr auto",
+                    borderColor: "rgba(255,255,255,0.06)",
+                    background: "rgba(255,255,255,0.02)",
+                  }}
+                >
+                  {["Usuário", "E-mail", "Casal", "Cadastro", ""].map((h) => (
+                    <span key={h} className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.25)" }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+
+                {loadingData ? (
+                  <div className="px-6 py-8 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>Carregando usuários…</div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="px-6 py-8 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>Nenhum usuário encontrado.</div>
+                ) : filteredUsers.map((u, i) => {
+                  const groupOf = groups.find((g) => g.members?.includes(u.uid));
+                  const isMaster = u.email === "yandermarssico@gmail.com";
+                  return (
+                    <div
+                      key={u.uid}
+                      className="grid items-center px-6 py-3.5 transition hover:bg-white/[0.02]"
+                      style={{
+                        gridTemplateColumns: "2fr 2fr 1fr 1fr auto",
+                        borderBottom: i < filteredUsers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                      }}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="size-8 rounded-lg flex items-center justify-center text-base shrink-0"
+                          style={{ background: "rgba(255,255,255,0.05)" }}
+                        >
+                          {u.emoji || "👤"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[13px] text-white truncate">{u.name}</div>
+                          {isMaster && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded-full border font-medium"
+                              style={{ color: "#C9A96E", borderColor: "rgba(201,169,110,0.3)", background: "rgba(201,169,110,0.08)" }}
+                            >
+                              MASTER
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-[12.5px] truncate pr-4" style={{ color: "rgba(255,255,255,0.45)" }}>
+                        {u.email}
+                      </span>
+                      <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        {groupOf ? `${groupOf.groupEmoji} ${groupOf.groupName}` : "—"}
+                      </span>
+                      <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "—"}
+                      </span>
+                      <div className="flex gap-1.5">
+                        <ActionBtn icon="ti-pencil" onClick={() => setEditingUser(u)} />
+                        {!isMaster && (
+                          <ActionBtn
+                            icon="ti-trash"
+                            danger
+                            onClick={() => setConfirmDel({ type: "user", id: u.uid, name: u.name })}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ══ TAB: GROUPS ══ */}
+          {tab === "groups" && (
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-[26px] font-semibold text-white leading-none">Casais</h1>
+                  <p className="text-[13px] mt-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    {groups.length} grupos no banco de dados
+                  </p>
+                </div>
+                <div
+                  className="flex items-center gap-2 h-9 px-3.5 rounded-xl border text-[13px]"
+                  style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.08)" }}
+                >
+                  <i className="ti ti-search text-[14px]" style={{ color: "rgba(255,255,255,0.3)" }} />
+                  <input
+                    value={groupSearch}
+                    onChange={(e) => setGroupSearch(e.target.value)}
+                    placeholder="Buscar grupo…"
+                    className="bg-transparent outline-none w-44 text-white"
+                  />
+                </div>
+              </div>
+
+              <div
+                className="rounded-2xl border overflow-hidden"
+                style={{ background: "#16161a", borderColor: "rgba(255,255,255,0.06)" }}
+              >
+                <div
+                  className="grid px-6 py-3 border-b"
+                  style={{
+                    gridTemplateColumns: "2fr 1fr 1fr 1fr auto",
+                    borderColor: "rgba(255,255,255,0.06)",
+                    background: "rgba(255,255,255,0.02)",
+                  }}
+                >
+                  {["Grupo", "Membros", "Código", "Criado em", ""].map((h) => (
+                    <span key={h} className="text-[10.5px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.25)" }}>
+                      {h}
+                    </span>
+                  ))}
+                </div>
+
+                {loadingData ? (
+                  <div className="px-6 py-8 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>Carregando grupos…</div>
+                ) : filteredGroups.length === 0 ? (
+                  <div className="px-6 py-8 text-[13px]" style={{ color: "rgba(255,255,255,0.3)" }}>Nenhum grupo encontrado.</div>
+                ) : filteredGroups.map((g, i) => (
+                  <div
+                    key={g.id}
+                    className="grid items-center px-6 py-3.5 transition hover:bg-white/[0.02]"
+                    style={{
+                      gridTemplateColumns: "2fr 1fr 1fr 1fr auto",
+                      borderBottom: i < filteredGroups.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                    }}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="size-8 rounded-lg flex items-center justify-center text-base shrink-0"
+                        style={{ background: "rgba(255,255,255,0.05)" }}
+                      >
+                        {g.groupEmoji || "🏠"}
+                      </div>
+                      <span className="text-[13px] text-white truncate">{g.groupName}</span>
+                    </div>
+                    <span className="text-[12.5px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                      {g.members?.length ?? 0} membro{(g.members?.length ?? 0) !== 1 ? "s" : ""}
+                    </span>
+                    <span
+                      className="text-[11.5px] font-mono px-2 py-0.5 rounded-md w-fit"
+                      style={{ color: "#C9A96E", background: "rgba(201,169,110,0.08)" }}
+                    >
+                      {g.inviteCode}
+                    </span>
+                    <span className="text-[12px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+                      {g.createdAt ? new Date(g.createdAt).toLocaleDateString("pt-BR") : "—"}
+                    </span>
+                    <div className="flex gap-1.5">
+                      <ActionBtn icon="ti-pencil" onClick={() => setEditingGroup(g)} />
+                      <ActionBtn
+                        icon="ti-trash"
+                        danger
+                        onClick={() => setConfirmDel({ type: "group", id: g.id, name: g.groupName })}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
+function ActionBtn({
+  icon,
+  danger,
+  onClick,
+}: {
+  icon: string;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="size-7 rounded-lg border flex items-center justify-center transition"
+      style={{
+        borderColor: danger ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.08)",
+        color: danger ? "rgba(239,68,68,0.5)" : "rgba(255,255,255,0.35)",
+        background: "transparent",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = danger
+          ? "rgba(239,68,68,0.1)"
+          : "rgba(255,255,255,0.05)";
+        (e.currentTarget as HTMLButtonElement).style.color = danger ? "#f87171" : "rgba(255,255,255,0.7)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+        (e.currentTarget as HTMLButtonElement).style.color = danger
+          ? "rgba(239,68,68,0.5)"
+          : "rgba(255,255,255,0.35)";
+      }}
+    >
+      <i className={`ti ${icon} text-[13px]`} />
+    </button>
+  );
+}
+
 function EditModal({
   title,
   onClose,
@@ -528,28 +748,34 @@ function EditModal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="glass rounded-2xl p-6 w-full max-w-sm">
+    <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+      <div
+        className="w-full max-w-sm rounded-2xl border p-6"
+        style={{ background: "#1c1c22", borderColor: "rgba(255,255,255,0.1)" }}
+      >
         <div className="flex items-center justify-between mb-5">
-          <div className="text-[20px] font-serif">{title}</div>
+          <div className="text-[16px] font-medium text-white">{title}</div>
           <button
             onClick={onClose}
-            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground transition flex items-center justify-center"
+            className="size-7 rounded-lg flex items-center justify-center transition"
+            style={{ color: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.04)" }}
           >
-            <i className="ti ti-x text-[14px]" />
+            <i className="ti ti-x text-[13px]" />
           </button>
         </div>
         <div className="space-y-4">{children}</div>
         <div className="flex gap-3 mt-6">
           <button
             onClick={onClose}
-            className="flex-1 h-10 rounded-xl border border-border text-[13px] text-muted-foreground hover:text-foreground transition"
+            className="flex-1 h-10 rounded-xl border text-[13px] transition"
+            style={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)" }}
           >
             Cancelar
           </button>
           <button
             onClick={onSave}
-            className="flex-1 h-10 rounded-xl bg-foreground text-background text-[13px] font-medium hover:opacity-90 transition"
+            className="flex-1 h-10 rounded-xl text-[13px] font-medium transition"
+            style={{ background: "#C9A96E", color: "#0a0a0b" }}
           >
             Salvar
           </button>
@@ -559,11 +785,41 @@ function EditModal({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function AdminField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground mb-1.5">{label}</div>
+      <div
+        className="text-[10.5px] uppercase tracking-[0.14em] mb-1.5"
+        style={{ color: "rgba(255,255,255,0.3)" }}
+      >
+        {label}
+      </div>
       {children}
     </label>
+  );
+}
+
+function AdminInput({
+  value,
+  onChange,
+  mono = false,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  mono?: boolean;
+}) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full h-10 px-3 rounded-xl border text-[13px] text-white outline-none transition ${mono ? "font-mono" : ""}`}
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        borderColor: "rgba(255,255,255,0.1)",
+        caretColor: "#C9A96E",
+      }}
+      onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,169,110,0.5)"; }}
+      onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+    />
   );
 }
