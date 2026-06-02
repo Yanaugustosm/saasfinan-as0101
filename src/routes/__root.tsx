@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
@@ -127,6 +128,15 @@ function AppGate() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Registra o Service Worker — obrigatório para o Chrome Android
+  // aceitar a instalação como PWA em tela cheia (sem barra de navegação)
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(console.error);
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
