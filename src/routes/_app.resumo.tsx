@@ -171,7 +171,12 @@ function ResumoPage() {
                       /* FIX 2 — Meses como pills visuais clicáveis */
                       <th key={m} className="pb-2 text-right">
                         <button
-                          onClick={() => setSelectedMonth(m)}
+                          onClick={() => {
+                            setSelectedMonth(m);
+                            setTimeout(() => {
+                              document.getElementById('resumo-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 50);
+                          }}
                           className={`
                             inline-flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg
                             border transition-all duration-200 min-w-[44px]
@@ -278,7 +283,12 @@ function ResumoPage() {
               months={months}
               monthData={monthData}
               selectedMonth={selectedMonth}
-              onSelect={setSelectedMonth}
+              onSelect={(m) => {
+                setSelectedMonth(m);
+                setTimeout(() => {
+                  document.getElementById('resumo-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
             />
           </div>
         </section>
@@ -359,7 +369,7 @@ function ResumoPage() {
         {/* ══════════════════════════════════════════════════════════
             BLOCO 4 — LISTA DENSA DE LANÇAMENTOS
         ══════════════════════════════════════════════════════════ */}
-        <section>
+        <section id="resumo-lancamentos" className="scroll-mt-24">
           <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
             <SectionLabel className="mb-0">
               Lançamentos · {monthLabel(selectedMonth)}
