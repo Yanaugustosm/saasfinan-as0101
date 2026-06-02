@@ -144,38 +144,70 @@ function ResumoPage() {
             BLOCO 1 — TABELA COMPARATIVA DOS 6 MESES
         ══════════════════════════════════════════════════════════ */}
         <section>
-          <SectionLabel>Fluxo mensal</SectionLabel>
+          {/* Header da seção com hint de scroll */}
+          <div className="flex items-center justify-between mb-4">
+            <SectionLabel className="mb-0">Fluxo mensal</SectionLabel>
+            {/* FIX 1 — Hint de scroll horizontal */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-muted-foreground/50">deslize</span>
+              <div className="flex gap-0.5">
+                <div className="w-4 h-4 rounded flex items-center justify-center bg-white/[0.05] text-[9px] text-muted-foreground/50">‹</div>
+                <div className="w-4 h-4 rounded flex items-center justify-center bg-white/[0.05] text-[9px] text-muted-foreground/50">›</div>
+              </div>
+            </div>
+          </div>
+
           <div className="w-full overflow-x-auto -mx-1 px-1">
             <table className="w-full min-w-[560px] border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left w-28 pb-3 text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">
+                  <th className="text-left w-28 pb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">
                     Métrica
                   </th>
-                  {months.map((m) => (
-                    <th
-                      key={m}
-                      onClick={() => setSelectedMonth(m)}
-                      className={`
-                        pb-3 text-[12px] font-medium text-right cursor-pointer transition
-                        ${
-                          m === selectedMonth
-                            ? "text-champagne"
-                            : m === curMonth
-                              ? "text-foreground"
-                              : "text-muted-foreground hover:text-foreground/80"
-                        }
-                      `}
-                    >
-                      {monthLabel(m)}
-                      {m === curMonth && (
-                        <span className="ml-1 text-[9px] text-champagne">
-                          ●
-                        </span>
-                      )}
-                    </th>
-                  ))}
-                  <th className="pb-3 text-[11px] uppercase tracking-[0.12em] text-muted-foreground font-medium text-right pl-4 border-l border-border">
+                  {months.map((m) => {
+                    const isActive = m === selectedMonth;
+                    const isCur = m === curMonth;
+                    return (
+                      /* FIX 2 — Meses como pills visuais clicáveis */
+                      <th key={m} className="pb-2 text-right">
+                        <button
+                          onClick={() => {
+                            setSelectedMonth(m);
+                            setTimeout(() => {
+                              document.getElementById('resumo-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 50);
+                          }}
+                          className={`
+                            inline-flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg
+                            border transition-all duration-200 min-w-[44px]
+                            ${
+                              isActive
+                                ? "bg-champagne/10 border-champagne/30"
+                                : "border-transparent hover:bg-white/[0.04] hover:border-white/[0.08]"
+                            }
+                          `}
+                        >
+                          {/* Dot de status */}
+                          <div className={`w-1 h-1 rounded-full transition-all ${
+                            isActive ? "bg-champagne" : "bg-transparent"
+                          }`} />
+                          {/* Label do mês */}
+                          <span className={`text-[11.5px] font-medium transition-colors ${
+                            isActive ? "text-champagne" : isCur ? "text-foreground" : "text-muted-foreground"
+                          }`}>
+                            {monthLabel(m)}
+                          </span>
+                          {/* Micro-texto de affordance */}
+                          <span className={`text-[8.5px] uppercase tracking-[0.08em] transition-colors ${
+                            isActive ? "text-champagne/50" : "text-muted-foreground/30"
+                          }`}>
+                            {isActive ? "ativo" : "toque"}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  })}
+                  <th className="pb-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground font-medium text-right pl-4 border-l border-border">
                     Total
                   </th>
                 </tr>
@@ -222,22 +254,41 @@ function ResumoPage() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Clique em um mês para ver os lançamentos abaixo.
-          </p>
+
+          {/* FIX 3 — Banner de confirmação do mês ativo */}
+          <div
+            className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{
+              background: "rgba(201,169,110,0.07)",
+              borderTop: "1px solid rgba(201,169,110,0.12)",
+              borderBottom: "1px solid rgba(201,169,110,0.12)",
+            }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-champagne shrink-0" />
+            <span className="text-[11px]" style={{ color: "rgba(201,169,110,0.8)" }}>
+              Mostrando lançamentos de{" "}
+              <strong style={{ color: "#C9A96E" }}>{monthLabel(selectedMonth)}</strong>
+            </span>
+          </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════
             BLOCO 2 — GRÁFICO DE BARRAS
         ══════════════════════════════════════════════════════════ */}
         <section>
-          <SectionLabel>Saldo mês a mês</SectionLabel>
+          {/* FIX 4 — Label com instrução de toque */}
+          <SectionLabel>Saldo mês a mês · <span className="normal-case tracking-normal opacity-60">toque para ver lançamentos</span></SectionLabel>
           <div className="glass rounded-2xl p-5">
             <MiniBarChart
               months={months}
               monthData={monthData}
               selectedMonth={selectedMonth}
-              onSelect={setSelectedMonth}
+              onSelect={(m) => {
+                setSelectedMonth(m);
+                setTimeout(() => {
+                  document.getElementById('resumo-lancamentos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 50);
+              }}
             />
           </div>
         </section>
@@ -318,7 +369,7 @@ function ResumoPage() {
         {/* ══════════════════════════════════════════════════════════
             BLOCO 4 — LISTA DENSA DE LANÇAMENTOS
         ══════════════════════════════════════════════════════════ */}
-        <section>
+        <section id="resumo-lancamentos" className="scroll-mt-24">
           <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
             <SectionLabel className="mb-0">
               Lançamentos · {monthLabel(selectedMonth)}
@@ -608,35 +659,47 @@ function MiniBarChart({
   const maxVal = Math.max(...monthData.flatMap((d) => [d.rec, d.des]), 1);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {monthData.map((d) => {
         const isSel = d.m === selectedMonth;
         const recPct = (d.rec / maxVal) * 100;
         const desPct = (d.des / maxVal) * 100;
 
         return (
+          /* FIX 4 — Linha com borda esquerda no ativo + chevron */
           <div
             key={d.m}
             onClick={() => onSelect(d.m)}
-            className={`flex items-center gap-3 cursor-pointer transition ${isSel ? "opacity-100" : "opacity-60 hover:opacity-90"}`}
+            className={`flex items-center gap-3 cursor-pointer rounded-xl px-2 py-2 transition-all duration-200 ${
+              isSel
+                ? "opacity-100"
+                : "opacity-60 hover:opacity-90 hover:bg-white/[0.02]"
+            }`}
+            style={isSel ? {
+              background: "rgba(201,169,110,0.05)",
+              borderLeft: "2px solid #C9A96E",
+              paddingLeft: "10px",
+            } : { borderLeft: "2px solid transparent" }}
           >
             <div
-              className={`text-[11px] w-8 shrink-0 uppercase tracking-[0.1em] ${isSel ? "text-champagne font-medium" : "text-muted-foreground"}`}
+              className={`text-[11px] w-8 shrink-0 uppercase tracking-[0.1em] ${
+                isSel ? "text-champagne font-medium" : "text-muted-foreground"
+              }`}
             >
               {monthLabel(d.m)}
             </div>
 
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
-                <div className="w-3 text-[9px] text-[oklch(0.74_0.12_145)]">
-                  ↑
-                </div>
+                <div className="w-3 text-[9px] text-[oklch(0.74_0.12_145)]">↑</div>
                 <div className="flex-1 h-[6px] bg-white/[0.05] rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${recPct}%`,
-                      background: "oklch(0.74 0.12 145 / 0.7)",
+                      background: isSel
+                        ? "oklch(0.74 0.12 145 / 0.9)"
+                        : "oklch(0.74 0.12 145 / 0.5)",
                     }}
                   />
                 </div>
@@ -651,7 +714,9 @@ function MiniBarChart({
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${desPct}%`,
-                      background: "oklch(0.82 0.07 75 / 0.5)",
+                      background: isSel
+                        ? "oklch(0.82 0.07 75 / 0.7)"
+                        : "oklch(0.82 0.07 75 / 0.4)",
                     }}
                   />
                 </div>
@@ -662,7 +727,7 @@ function MiniBarChart({
             </div>
 
             <div
-              className={`text-[12px] tabular w-16 text-right shrink-0 font-medium ${
+              className={`text-[12px] tabular w-14 text-right shrink-0 font-medium ${
                 d.saldo > 0
                   ? "text-champagne"
                   : d.saldo < 0
@@ -672,6 +737,20 @@ function MiniBarChart({
             >
               {d.saldo > 0 ? "+" : ""}
               {fmtK(d.saldo)}
+            </div>
+
+            {/* Chevron indicador de clicável */}
+            <div
+              className="w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all"
+              style={isSel ? {
+                background: "rgba(201,169,110,0.18)",
+                border: "1px solid rgba(201,169,110,0.35)",
+              } : {
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <span className="text-[10px]" style={{ color: isSel ? "#C9A96E" : "rgba(255,255,255,0.25)" }}>›</span>
             </div>
           </div>
         );

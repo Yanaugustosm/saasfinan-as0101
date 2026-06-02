@@ -199,7 +199,7 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
           </button>
         </div>
 
-        <div className="px-6 pb-6 space-y-4">
+        <div className="px-5 pb-5 space-y-3">
 
           {/* ── Toggle Despesa / Receita */}
           <div
@@ -234,10 +234,10 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
 
           {/* ── Display de Valor */}
           <div
-            className="rounded-2xl p-5 text-center"
+            className="rounded-xl p-3 text-center"
             style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            <div className="text-[11px] uppercase tracking-[0.22em] mb-3" style={{ color: "rgba(255,255,255,0.30)" }}>Valor</div>
+            <div className="text-[10px] uppercase tracking-[0.20em] mb-1" style={{ color: "rgba(255,255,255,0.30)" }}>Valor</div>
             <input
               ref={valorRef}
               type="number"
@@ -245,14 +245,14 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
               value={form.valor}
               onChange={(e) => sf("valor")(e.target.value)}
               placeholder="0"
-              className="w-full min-w-0 block text-center text-[52px] font-light tracking-tight bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-full min-w-0 block text-center text-[40px] font-light tracking-tight bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               style={{
                 fontFamily: "'Outfit', sans-serif",
                 maxWidth: "100%",
                 color: "rgba(255,255,255,0.92)",
               }}
             />
-            <div className="text-[13px] mt-1 tabular-nums" style={{ color: subColor }}>
+            <div className="text-[12px] tabular-nums" style={{ color: subColor }}>
               {subLabel}
             </div>
           </div>
@@ -338,10 +338,10 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
           )}
 
           {/* ── Botões */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button
               onClick={onClose}
-              className="flex-1 h-12 rounded-2xl text-[14px] transition hover:bg-white/5"
+              className="flex-1 h-11 rounded-xl text-[14px] transition hover:bg-white/5"
               style={{
                 border: "1px solid rgba(255,255,255,0.10)",
                 color: "rgba(255,255,255,0.50)",
@@ -353,7 +353,7 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
               onClick={handleSave}
               disabled={!form.descricao || !form.valor || saving}
               title={!form.descricao || !form.valor ? "Preencha todos os campos obrigatórios" : ""}
-              className="flex-1 h-12 rounded-2xl text-[14px] font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 h-11 rounded-xl text-[14px] font-semibold transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#f4efe6", color: "#0f0f0f" }}
             >
               {saving ? "Salvando…" : "Salvar"}
@@ -369,7 +369,7 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
 
 /* ─── Helpers de estilo ───────────────────────────────────── */
 const INPUT_CLS = `
-  w-full min-w-0 h-12 px-4 rounded-2xl text-[14px]
+  w-full min-w-0 h-10 px-3.5 rounded-xl text-[13.5px]
   bg-white/[0.05] border border-white/[0.08]
   placeholder:text-white/25
   focus:outline-none focus:border-white/25 focus:bg-white/[0.07]
@@ -378,7 +378,7 @@ const INPUT_CLS = `
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10.5px] uppercase tracking-[0.20em] mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>
+    <div className="text-[10px] uppercase tracking-[0.16em] mb-1.5" style={{ color: "rgba(255,255,255,0.35)" }}>
       {children}
     </div>
   );
