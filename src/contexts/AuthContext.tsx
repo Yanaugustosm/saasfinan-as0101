@@ -36,6 +36,7 @@ export interface UserProfile {
   paletteId: string;
   groupId: string | null;
   createdAt: string;
+  suspended?: boolean;
 }
 
 export interface GroupData {

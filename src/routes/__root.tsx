@@ -14,6 +14,8 @@ import { DataProvider } from "@/contexts/DataContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { AuthScreen } from "@/components/AuthScreen";
 import { GroupSetup } from "@/components/GroupSetup";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 function NotFoundComponent() {
   return (
@@ -95,6 +97,38 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SuspendedScreen() {
+  const { logout } = useAuth();
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4"
+      style={{ background: "#090909" }}>
+      {/* subtle grid */}
+      <div className="pointer-events-none fixed inset-0 opacity-[0.025]"
+        style={{ backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)", backgroundSize: "48px 48px" }} />
+      <div className="relative text-center max-w-sm">
+        <div className="size-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+          style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+          <i className="ti ti-ban text-[32px]" style={{ color: "#f87171" }} />
+        </div>
+        <h1 className="text-[22px] font-bold text-white leading-tight mb-3">Conta suspensa</h1>
+        <p className="text-[14px] leading-relaxed" style={{ color: "rgba(255,255,255,0.4)" }}>
+          Sua conta foi temporariamente suspensa pelo administrador.<br />
+          Entre em contato com o suporte para mais informações.
+        </p>
+        <button onClick={logout}
+          className="mt-8 h-10 px-6 rounded-xl text-[13px] border transition"
+          style={{ borderColor: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+        >
+          Sair da conta
+        </button>
+        <div className="mt-10 text-[11px] tracking-[0.2em] uppercase" style={{ color: "rgba(255,255,255,0.12)" }}>Sincronia</div>
+      </div>
+    </div>
+  );
+}
+
 function AppGate() {
   const { user, profile, group, loading } = useAuth();
 
@@ -118,7 +152,8 @@ function AppGate() {
   }
 
   if (!user || !profile) return <AuthScreen />;
-  if (!group) return <GroupSetup />;
+  if (profile.suspended)   return <SuspendedScreen />;
+  if (!group)              return <GroupSetup />;
 
   return (
     <DataProvider groupId={group.id}>
