@@ -201,16 +201,30 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   // ── Single delete ──
   const doSingleDelete = async () => {
     if (!confirmDel) return;
+    // Blindagem: nunca excluir a conta Master
+    if (confirmDel.type === "user") {
+      const target = users.find(u => u.uid === confirmDel.id);
+      if (target?.email === MASTER_EMAIL) {
+        showToast("A conta Master não pode ser excluída.", false);
+        setConfirmDel(null);
+        return;
+      }
+    }
     try {
-      await deleteDoc(doc(db, confirmDel.type === "user" ? "users" : "groups", confirmDel.id));
+      const now = new Date().toISOString();
       if (confirmDel.type === "user") {
-        setUsers(p => p.filter(u => u.uid !== confirmDel.id));
+        // Soft delete: marca deletedAt, não apaga do Firestore
+        await updateDoc(doc(db, "users", confirmDel.id), { deletedAt: now, suspended: true });
+        setUsers(p => p.map(u => u.uid === confirmDel.id ? { ...u, deletedAt: now, suspended: true } : u));
         if (drawerUser?.uid === confirmDel.id) setDrawerUser(null);
       } else {
+        // Grupos ainda são excluídos permanentemente (não há restauração de grupos)
+        const { deleteDoc: del } = await import("firebase/firestore");
+        await del(doc(db, "groups", confirmDel.id));
         setGroups(p => p.filter(g => g.id !== confirmDel.id));
         if (drawerGroup?.id === confirmDel.id) setDrawerGroup(null);
       }
-      showToast("Excluído com sucesso.");
+      showToast(confirmDel.type === "user" ? "Usuário enviado para a lixeira (7 dias)." : "Grupo excluído.");
     } catch (e: any) { showToast(`Erro: ${e?.message}`, false); }
     finally { setConfirmDel(null); }
   };
@@ -220,12 +234,20 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     const type = confirmBulkDel;
     if (!type) return;
     try {
+      const now = new Date().toISOString();
       if (type === "user") {
-        const count = selUsers.size;
-        await Promise.all([...selUsers].map(id => deleteDoc(doc(db, "users", id))));
-        setUsers(p => p.filter(u => !selUsers.has(u.uid)));
+        // Filtrar a conta Master antes de qualquer operação
+        const safeIds = [...selUsers].filter(id => {
+          const u = users.find(usr => usr.uid === id);
+          return u?.email !== MASTER_EMAIL;
+        });
+        const count = safeIds.length;
+        await Promise.all(safeIds.map(id =>
+          updateDoc(doc(db, "users", id), { deletedAt: now, suspended: true })
+        ));
+        setUsers(p => p.map(u => safeIds.includes(u.uid) ? { ...u, deletedAt: now, suspended: true } : u));
         setSelUsers(new Set());
-        showToast(`${count} usuário(s) excluído(s).`);
+        showToast(`${count} usuário(s) enviado(s) para a lixeira (7 dias).`);
       } else {
         const count = selGroups.size;
         await Promise.all([...selGroups].map(id => deleteDoc(doc(db, "groups", id))));
@@ -240,9 +262,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   // ── Selection helpers ──
   const toggleSelUser  = (uid: string) => setSelUsers(p  => { const n = new Set(p); n.has(uid) ? n.delete(uid) : n.add(uid); return n; });
   const toggleSelGroup = (id:  string) => setSelGroups(p => { const n = new Set(p); n.has(id)  ? n.delete(id)  : n.add(id);  return n; });
-  const allUsersSelected  = filteredUsers.length  > 0 && filteredUsers.every(u  => selUsers.has(u.uid));
+  const allUsersSelected  = filteredUsers.length  > 0 && filteredUsers.filter(u => u.email !== MASTER_EMAIL).every(u  => selUsers.has(u.uid));
   const allGroupsSelected = filteredGroups.length > 0 && filteredGroups.every(g => selGroups.has(g.id));
-  const toggleAllUsers  = () => allUsersSelected  ? setSelUsers(new Set())  : setSelUsers(new Set(filteredUsers.map(u => u.uid)));
+  // Selecionar Todos NUNCA inclui o Master
+  const toggleAllUsers  = () => {
+    const selectable = filteredUsers.filter(u => u.email !== MASTER_EMAIL);
+    if (allUsersSelected) setSelUsers(new Set());
+    else setSelUsers(new Set(selectable.map(u => u.uid)));
+  };
   const toggleAllGroups = () => allGroupsSelected ? setSelGroups(new Set()) : setSelGroups(new Set(filteredGroups.map(g => g.id)));
 
   // ── CSV Export ──
@@ -284,6 +311,15 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       setUsers(p => p.map(u => u.uid === updated.uid ? updated : u));
       setDrawerUser(updated);
       showToast("Usuário atualizado.");
+    } catch (e: any) { showToast(`Erro: ${e?.message}`, false); }
+  };
+
+  // ── Restore user ──
+  const restoreUser = async (user: UserProfile) => {
+    try {
+      await updateDoc(doc(db, "users", user.uid), { deletedAt: null, suspended: false });
+      setUsers(p => p.map(u => u.uid === user.uid ? { ...u, deletedAt: null, suspended: false } : u));
+      showToast(`${user.name} restaurado com sucesso!`);
     } catch (e: any) { showToast(`Erro: ${e?.message}`, false); }
   };
 
@@ -359,6 +395,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         onClose={() => setDrawerUser(null)}
         onSave={saveUser}
         onToggleSuspend={toggleSuspend}
+        onRestore={restoreUser}
         onDelete={u => { setDrawerUser(null); setConfirmDel({ type: "user", id: u.uid, name: u.name }); }}
       />
 
@@ -586,7 +623,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                         <span className="text-[12.5px] pr-4 truncate" style={{ color: C.muted }} onClick={() => setDrawerUser(u)}>{u.email}</span>
                         <span className="text-[12px]" style={{ color: C.dim }} onClick={() => setDrawerUser(u)}>{grp ? `${grp.groupEmoji} ${grp.groupName}` : "—"}</span>
                         <span className="text-[12px]" style={{ color: C.dim }} onClick={() => setDrawerUser(u)}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString("pt-BR") : "—"}</span>
-                        <div onClick={() => setDrawerUser(u)}>{u.suspended ? <SuspendBadge /> : <ActiveBadge />}</div>
+                        <div onClick={() => setDrawerUser(u)}>{u.deletedAt ? <TrashBadge deletedAt={u.deletedAt} /> : u.suspended ? <SuspendBadge /> : <ActiveBadge />}</div>
                         <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
                           <ActionBtn icon="ti-pencil" onClick={() => setDrawerUser(u)} />
                           {!isMaster && <ActionBtn icon="ti-trash" danger onClick={() => setConfirmDel({ type: "user", id: u.uid, name: u.name })} />}
@@ -670,13 +707,14 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // USER SIDE DRAWER
 // ═══════════════════════════════════════════════════════════════════════════════
-function UserSideDrawer({ user, groups, onClose, onSave, onToggleSuspend, onDelete }: {
+function UserSideDrawer({ user, groups, onClose, onSave, onToggleSuspend, onDelete, onRestore }: {
   user: UserProfile | null;
   groups: (GroupData & { id: string })[];
   onClose: () => void;
   onSave: (u: UserProfile) => void;
   onToggleSuspend: (u: UserProfile) => void;
   onDelete: (u: UserProfile) => void;
+  onRestore: (u: UserProfile) => void;
 }) {
   const [local,  setLocal]  = useState<UserProfile | null>(null);
   const [saving, setSaving] = useState(false);
@@ -764,6 +802,22 @@ function UserSideDrawer({ user, groups, onClose, onSave, onToggleSuspend, onDele
                   </div>
                 </div>
               )}
+              {!isMaster && local.deletedAt && (
+                <div>
+                  <SectionLabel>Conta na Lixeira</SectionLabel>
+                  <div className="mt-3 rounded-xl border p-3 text-[12.5px] mb-3" style={{ borderColor: "rgba(249,115,22,0.2)", background: "rgba(249,115,22,0.06)", color: "#f97316" }}>
+                    <i className="ti ti-clock mr-1.5" />
+                    Expira em <strong>{Math.max(0, 7 - Math.floor((Date.now() - new Date(local.deletedAt).getTime()) / (1000*60*60*24)))}</strong> dia(s). Login antes disso restaura tudo.
+                  </div>
+                  <button onClick={() => { onRestore(local); onClose(); }}
+                    className="w-full h-10 rounded-xl text-[13px] font-semibold transition"
+                    style={{ background: "rgba(116,185,101,0.1)", border: "1px solid rgba(116,185,101,0.3)", color: C.green }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(116,185,101,0.2)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(116,185,101,0.1)")}>
+                    <i className="ti ti-restore mr-2" />Restaurar conta agora
+                  </button>
+                </div>
+              )}
               {!isMaster && (
                 <div>
                   <SectionLabel danger>Zona de perigo</SectionLabel>
@@ -772,7 +826,7 @@ function UserSideDrawer({ user, groups, onClose, onSave, onToggleSuspend, onDele
                     style={{ borderColor: "rgba(239,68,68,0.3)", color: C.red, background: "rgba(239,68,68,0.06)" }}
                     onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.12)")}
                     onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.06)")}>
-                    <i className="ti ti-trash mr-2" />Excluir conta permanentemente
+                    <i className="ti ti-trash mr-2" />{local.deletedAt ? "Mover para lixeira novamente" : "Enviar para lixeira"}
                   </button>
                 </div>
               )}
@@ -962,6 +1016,16 @@ function ActiveBadge() {
     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium"
       style={{ color: C.green, borderColor: "rgba(116,185,101,0.3)", background: "rgba(116,185,101,0.08)" }}>
       <span className="size-1.5 rounded-full" style={{ background: C.green }} />Ativo
+    </span>
+  );
+}
+
+function TrashBadge({ deletedAt }: { deletedAt: string }) {
+  const days = Math.max(0, 7 - Math.floor((Date.now() - new Date(deletedAt).getTime()) / (1000 * 60 * 60 * 24)));
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium"
+      style={{ color: "#f97316", borderColor: "rgba(249,115,22,0.3)", background: "rgba(249,115,22,0.08)" }}>
+      <i className="ti ti-trash text-[10px]" />Lixeira ({days}d)
     </span>
   );
 }

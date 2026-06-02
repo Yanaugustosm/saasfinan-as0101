@@ -152,7 +152,7 @@ function AppGate() {
   }
 
   if (!user || !profile) return <AuthScreen />;
-  if (profile.suspended)   return <SuspendedScreen />;
+  if (profile.suspended && !profile.isMaster) return <SuspendedScreen />;
   if (!group)              return <GroupSetup />;
 
   return (
