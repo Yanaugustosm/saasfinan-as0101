@@ -164,31 +164,31 @@ function LancamentosPage() {
             ))}
           </select>
 
-          {/* Toggle Lista / Planilha */}
-          <div className="flex gap-0.5 p-0.5 bg-white/[0.04] rounded-full border border-border ml-auto md:ml-0">
+          {/* Toggle Lista / Categorias */}
+          <div className="flex gap-1 p-1 bg-white/[0.04] rounded-xl border border-border ml-auto md:ml-0">
             <button
               onClick={() => setViewMode("list")}
-              title="Modo lista"
               aria-label="Modo lista"
-              className={`h-8 w-8 rounded-full flex items-center justify-center transition text-[15px] ${
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium transition-all ${
                 viewMode === "list"
-                  ? "bg-foreground text-background"
+                  ? "bg-foreground text-background shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <i className="ti ti-list" aria-hidden="true" />
+              <i className="ti ti-list text-[13px]" aria-hidden="true" />
+              Lista
             </button>
             <button
               onClick={() => setViewMode("table")}
-              title="Modo planilha"
-              aria-label="Modo planilha"
-              className={`h-8 w-8 rounded-full flex items-center justify-center transition text-[15px] ${
+              aria-label="Modo categorias"
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] font-medium transition-all ${
                 viewMode === "table"
-                  ? "bg-foreground text-background"
+                  ? "bg-foreground text-background shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <i className="ti ti-table" aria-hidden="true" />
+              <i className="ti ti-chart-pie text-[13px]" aria-hidden="true" />
+              Categorias
             </button>
           </div>
         </div>
@@ -312,6 +312,9 @@ function TableView({ filtered, byCategory, members, rec, des, onEdit, onDelete }
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const saldo = rec - des;
   const maxAbs = Math.max(...byCategory.map((c) => Math.abs(c.total)), 1);
+  const savRate = rec > 0 ? Math.max(0, Math.min(100, (saldo / rec) * 100)) : 0;
+  const savRateFmt = savRate.toFixed(1).replace(".", ",") + "%";
+  const savLabel = savRate >= 80 ? "Excelente! Acima de 80%" : savRate >= 50 ? "Muito bom! Acima de 50%" : savRate >= 20 ? "Saudável · ideal acima de 20%" : "Atenção · ideal mínimo de 20%";
 
   if (filtered.length === 0) {
     return (
@@ -346,6 +349,33 @@ function TableView({ filtered, byCategory, members, rec, des, onEdit, onDelete }
           </div>
         ))}
       </div>
+
+      {/* ── Taxa de Poupança ── */}
+      {rec > 0 && (
+        <div className="glass rounded-xl px-5 py-4">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Taxa de poupança</span>
+            <span className={`text-[14px] font-semibold tabular ${
+              savRate >= 20 ? "text-champagne" : "text-destructive"
+            }`}>{savRateFmt}</span>
+          </div>
+          <div className="h-[4px] rounded-full bg-white/[0.06] overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${savRate}%`,
+                background: savRate >= 20
+                  ? "linear-gradient(90deg, oklch(0.74 0.12 145 / 0.5), #C9A96E)"
+                  : "oklch(0.55 0.18 25 / 0.6)",
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground/60">
+            <span>{savLabel}</span>
+            <span>Receita: {fmtK(rec)}</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Tabela por categoria ── */}
       <div className="glass rounded-2xl overflow-hidden">
