@@ -573,7 +573,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                         }}
                         onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = selected ? "rgba(201,169,110,0.04)" : "transparent"; }}>
-                        <div onClick={e => { e.stopPropagation(); if (!isMaster) toggleSelUser(u.uid); }}>
+                        <div onClick={e => e.stopPropagation()}>
                           <Checkbox checked={selected} onChange={() => toggleSelUser(u.uid)} disabled={isMaster} />
                         </div>
                         <div className="flex items-center gap-3 min-w-0" onClick={() => setDrawerUser(u)}>
@@ -641,7 +641,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                         }}
                         onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "rgba(255,255,255,0.015)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = selected ? "rgba(201,169,110,0.04)" : "transparent"; }}>
-                        <div onClick={e => { e.stopPropagation(); toggleSelGroup(g.id); }}>
+                        <div onClick={e => e.stopPropagation()}>
                           <Checkbox checked={selected} onChange={() => toggleSelGroup(g.id)} />
                         </div>
                         <div className="flex items-center gap-3 min-w-0" onClick={() => setDrawerGroup(g)}>
@@ -927,7 +927,9 @@ function ExportBtn({ onClick, count }: { onClick: () => void; count: number }) {
 
 function Checkbox({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
   return (
-    <button onClick={onChange} disabled={disabled}
+    <button
+      onClick={e => { e.stopPropagation(); if (!disabled) onChange(); }}
+      disabled={disabled}
       className="size-5 rounded-md border flex items-center justify-center shrink-0 transition-all"
       style={{ background: checked ? C.gold : "transparent", borderColor: checked ? C.gold : "rgba(255,255,255,0.2)", opacity: disabled ? 0.3 : 1 }}>
       {checked && <i className="ti ti-check text-[11px]" style={{ color: "#090909", fontWeight: 700 }} />}
