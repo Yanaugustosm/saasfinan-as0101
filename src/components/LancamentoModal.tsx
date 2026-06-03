@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useRef, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData, nowDate, fmt } from "@/contexts/DataContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -220,9 +221,9 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
   const corReceita = "oklch(0.75 0.12 150)";
   const corAtiva   = isReceita ? corReceita : corDespesa;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-6 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-6 bg-black/70 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -527,6 +528,8 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 // ─── ObsField ────────────────────────────────────────────────────────────────
