@@ -199,32 +199,39 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
     if (!canSave || !user) return;
     setSaving(true);
     try {
+      // FIX 5: arredondamento de ponto flutuante — garante exatamente 2 casas decimais no banco
+      const valorSalvo = Math.round(valorNum * 100) / 100;
+
       const payload: Record<string, unknown> = {
         tipo:      form.tipo,
         descricao: form.descricao.trim(),
-        valor:     valorNum,
+        valor:     valorSalvo,
         grupo:     form.grupo,
         categoria: form.categoria || "Outros",
         data:      form.data,
         obs:       form.obs.trim(),
       };
-      // Adiciona campos de inteligência apenas se preenchidos
+
+      // Campos de inteligência: adiciona se preenchidos
       if (form.tipo === "despesa" && form.tipoGasto)
         payload.tipoGasto = form.tipoGasto;
       if (form.tipo === "receita" && form.receitaTipo)
         payload.receitaTipo = form.receitaTipo;
-      // Se não classificou, marca como pendente
+
+      // FIX 4: estado "fantasma" — pendenteInteligencia deve ser explicitamente
+      // removido (false) quando o usuário classifica o lançamento ao editar,
+      // caso contrário a flag fica presa no banco para sempre.
       const semClassificacao =
         (form.tipo === "despesa" && !form.tipoGasto) ||
         (form.tipo === "receita" && !form.receitaTipo);
-      if (semClassificacao) payload.pendenteInteligencia = true;
+      payload.pendenteInteligencia = semClassificacao;
 
       if (isEdit && transacao) {
         await updateTransacao(transacao.id, payload as Partial<import("@/contexts/DataContext").Transacao>);
         toast("Lançamento atualizado");
       } else {
         await addTransacao(payload as Omit<import("@/contexts/DataContext").Transacao, "id" | "groupId" | "userId">, user.uid);
-        toast(`${isReceita ? "Receita" : "Despesa"} de ${fmt(valorNum)} salva`);
+        toast(`${isReceita ? "Receita" : "Despesa"} de ${fmt(valorSalvo)} salva`);
       }
       onClose();
     } finally {

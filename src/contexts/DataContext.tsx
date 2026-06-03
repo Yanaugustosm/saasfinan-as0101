@@ -261,7 +261,8 @@ export function calcScore(transacoes: Transacao[], notas: Nota[], metas: Meta[])
     return { month: m, ...calcTotais(l) };
   });
 
-  const savingsRate = rec > 0 ? (saldo / rec) * 100 : 0;
+  // FIX 1: savingsRate negativa quando sem receita e com despesas (capital sendo consumido)
+  const savingsRate = rec > 0 ? (saldo / rec) * 100 : des > 0 ? -100 : 0;
   const today = nowDate();
   const overdueCount = (notas || []).filter(
     (n) => ["conta", "divida"].includes(n.tipo) && n.vencimento && n.vencimento < today && !n.pago
@@ -269,7 +270,10 @@ export function calcScore(transacoes: Transacao[], notas: Nota[], metas: Meta[])
   const metasAtingidas = (metas || []).filter((m) => m.acumulado >= m.valor).length;
   const last3 = monthData.slice(-3);
   const avgDes = last3.reduce((s, m) => s + m.des, 0) / 3 || 1;
-  const desTrend = last3.length > 1 ? ((last3[2].des - last3[0].des) / avgDes) * 100 : 0;
+  // FIX 2: usa último mês disponível (não índice fixo [2] que causa crash com <3 meses de histórico)
+  const lastMonth = last3[last3.length - 1];
+  const firstMonth = last3[0];
+  const desTrend = last3.length > 1 ? ((lastMonth.des - firstMonth.des) / avgDes) * 100 : 0;
 
   let score = 50;
   if (savingsRate >= 30) score += 25;
@@ -388,17 +392,35 @@ export function analyzeBehavior(
     return sum + (m.valor - m.acumulado) / mesesRestantes;
   }, 0);
 
-  const { saldo } = calcTotais(
+  // FIX 3: usa média do saldo histórico em vez do saldo do mês atual (evita falso alarme no dia 1)
+  const months6 = getLast6Months();
+  const saldoMeses = months6.map((m) =>
+    calcTotais(transacoes.filter((t) => t.data?.startsWith(m))).saldo
+  );
+  const mesesComMovimento = saldoMeses.filter((s, i) => {
+    const m = months6[i];
+    return transacoes.some((t) => t.data?.startsWith(m));
+  });
+  const saldoMedioHistorico = mesesComMovimento.length > 0
+    ? mesesComMovimento.reduce((a, b) => a + b, 0) / mesesComMovimento.length
+    : 0;
+  // Capacidade de geração de caixa: máximo entre média histórica e (receita - custo essencial)
+  const { rec: recAtual } = calcTotais(
     transacoes.filter((t) => t.data?.startsWith(new Date().toISOString().slice(0, 7)))
   );
-  const saldoLivre = Math.max(0, saldo);
+  const capacidadeCaixa = Math.max(
+    0,
+    saldoMedioHistorico,
+    recAtual > custoVidaEssencial ? recAtual - custoVidaEssencial : 0
+  );
+  const saldoLivre = capacidadeCaixa;
 
   const freioDeMetas =
     metasAtivas.length >= 3 && aporteNecessario > saldoLivre * 0.8
       ? {
           icon: "🚦",
           titulo: "Freio de Metas",
-          desc: `Vocês têm ${metasAtivas.length} metas ativas, mas o fluxo atual suporta aportes de ${fmt(saldoLivre * 0.5)}/mês. Considere pausar a meta de menor prioridade.`,
+          desc: `Vocês têm ${metasAtivas.length} metas ativas. Com base na capacidade histórica de ${fmt(saldoLivre)}/mês, o aporte necessário de ${fmt(aporteNecessario)}/mês é muito alto. Considere pausar a meta de menor prioridade.`,
         }
       : null;
 
