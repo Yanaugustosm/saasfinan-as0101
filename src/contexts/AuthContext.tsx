@@ -138,9 +138,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (needsPatch) {
         const displayName = firebaseUser?.displayName ?? userEmail.split("@")[0];
         const patched = { ...p, name: displayName, emoji: "😊" };
+        // 1. Atualiza o perfil principal do usuário
         await updateDoc(userRef, { name: patched.name, emoji: patched.emoji });
+        // 2. Se estiver num casal, atualiza o cache do grupo também
+        if (p.groupId) {
+          try {
+            await updateDoc(doc(db, "groups", p.groupId), {
+              [`memberProfiles.${uid}.name`]:  patched.name,
+              [`memberProfiles.${uid}.emoji`]: patched.emoji,
+            });
+          } catch (_) { /* silencioso se o grupo não existir */ }
+          subscribeToGroup(p.groupId);
+        }
         setProfile(patched);
-        if (patched.groupId) subscribeToGroup(patched.groupId);
         return;
       }
 

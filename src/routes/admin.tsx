@@ -307,7 +307,21 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   // ── Save user ──
   const saveUser = async (updated: UserProfile) => {
     try {
-      await updateDoc(doc(db, "users", updated.uid), { name: updated.name, email: updated.email, emoji: updated.emoji });
+      // 1. Atualiza o perfil principal na coleção users
+      await updateDoc(doc(db, "users", updated.uid), {
+        name:  updated.name,
+        email: updated.email,
+        emoji: updated.emoji,
+      });
+      // 2. Se o usuário pertence a um casal, atualiza o cache do grupo também
+      if (updated.groupId) {
+        try {
+          await updateDoc(doc(db, "groups", updated.groupId), {
+            [`memberProfiles.${updated.uid}.name`]:  updated.name,
+            [`memberProfiles.${updated.uid}.emoji`]: updated.emoji,
+          });
+        } catch (_) { /* silencioso se o grupo não existir */ }
+      }
       setUsers(p => p.map(u => u.uid === updated.uid ? updated : u));
       setDrawerUser(updated);
       showToast("Usuário atualizado.");
