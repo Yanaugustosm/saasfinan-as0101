@@ -110,6 +110,8 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
     categoria: "",
     data:      lastDefaults.data,
     obs:       "",
+    tipoGasto:   "" as "essencial" | "desejo" | "emergencia" | "",
+    receitaTipo: "" as "normal" | "extra" | "",
   };
 
   const [form,          setForm]           = useState(blank);
@@ -132,13 +134,15 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
     if (!isOpen) return;
     if (transacao) {
       setForm({
-        tipo:      transacao.tipo,
-        descricao: transacao.descricao,
-        valor:     String(transacao.valor),
-        grupo:     transacao.grupo,
-        categoria: transacao.categoria ?? "",
-        data:      transacao.data,
-        obs:       transacao.obs ?? "",
+        tipo:        transacao.tipo,
+        descricao:   transacao.descricao,
+        valor:       String(transacao.valor),
+        grupo:       transacao.grupo,
+        categoria:   transacao.categoria ?? "",
+        data:        transacao.data,
+        obs:         transacao.obs ?? "",
+        tipoGasto:   (transacao.tipoGasto ?? "") as "essencial" | "desejo" | "emergencia" | "",
+        receitaTipo: (transacao.receitaTipo ?? "") as "normal" | "extra" | "",
       });
       setEtapa(2);
     } else {
@@ -195,7 +199,7 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
     if (!canSave || !user) return;
     setSaving(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         tipo:      form.tipo,
         descricao: form.descricao.trim(),
         valor:     valorNum,
@@ -204,11 +208,22 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
         data:      form.data,
         obs:       form.obs.trim(),
       };
+      // Adiciona campos de inteligência apenas se preenchidos
+      if (form.tipo === "despesa" && form.tipoGasto)
+        payload.tipoGasto = form.tipoGasto;
+      if (form.tipo === "receita" && form.receitaTipo)
+        payload.receitaTipo = form.receitaTipo;
+      // Se não classificou, marca como pendente
+      const semClassificacao =
+        (form.tipo === "despesa" && !form.tipoGasto) ||
+        (form.tipo === "receita" && !form.receitaTipo);
+      if (semClassificacao) payload.pendenteInteligencia = true;
+
       if (isEdit && transacao) {
-        await updateTransacao(transacao.id, payload);
+        await updateTransacao(transacao.id, payload as Partial<import("@/contexts/DataContext").Transacao>);
         toast("Lançamento atualizado");
       } else {
-        await addTransacao(payload, user.uid);
+        await addTransacao(payload as Omit<import("@/contexts/DataContext").Transacao, "id" | "groupId" | "userId">, user.uid);
         toast(`${isReceita ? "Receita" : "Despesa"} de ${fmt(valorNum)} salva`);
       }
       onClose();
@@ -427,6 +442,60 @@ export function LancamentoModal({ isOpen, onClose, transacao }: LancamentoModalP
                   )}
                 </div>
               </div>
+
+              {/* Classificação inteligente: Despesa */}
+              {form.tipo === "despesa" && (
+                <div>
+                  <div className="text-[10.5px] uppercase tracking-[0.20em] text-white/30 mb-2.5">Este gasto foi...</div>
+                  <div className="flex gap-2">
+                    {(["essencial", "desejo", "emergencia"] as const).map((tg) => {
+                      const labels = { essencial: "✅ Essencial", desejo: "✨ Desejo", emergencia: "🚨 Emergência" };
+                      const sel = form.tipoGasto === tg;
+                      return (
+                        <button
+                          key={tg}
+                          onClick={() => setForm(p => ({ ...p, tipoGasto: sel ? "" : tg }))}
+                          className="flex-1 py-2 rounded-xl text-[12px] font-medium border transition-all active:scale-[0.96]"
+                          style={sel
+                            ? { background: `${corAtiva}18`, borderColor: `${corAtiva}50`, color: corAtiva }
+                            : { background: "oklch(1 0 0 / 0.04)", borderColor: "oklch(1 0 0 / 0.08)", color: "oklch(1 0 0 / 0.45)" }
+                          }
+                        >
+                          {labels[tg]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-white/20 mt-1.5">Opcional — ajuda o Consultor a analisar seus hábitos</p>
+                </div>
+              )}
+
+              {/* Classificação inteligente: Receita */}
+              {form.tipo === "receita" && (
+                <div>
+                  <div className="text-[10.5px] uppercase tracking-[0.20em] text-white/30 mb-2.5">Tipo de receita</div>
+                  <div className="flex gap-2">
+                    {(["normal", "extra"] as const).map((rt) => {
+                      const labels = { normal: "💼 Normal", extra: "🎯 Extra" };
+                      const sel = form.receitaTipo === rt;
+                      return (
+                        <button
+                          key={rt}
+                          onClick={() => setForm(p => ({ ...p, receitaTipo: sel ? "" : rt }))}
+                          className="flex-1 py-2 rounded-xl text-[12px] font-medium border transition-all active:scale-[0.96]"
+                          style={sel
+                            ? { background: `${corAtiva}18`, borderColor: `${corAtiva}50`, color: corAtiva }
+                            : { background: "oklch(1 0 0 / 0.04)", borderColor: "oklch(1 0 0 / 0.08)", color: "oklch(1 0 0 / 0.45)" }
+                          }
+                        >
+                          {labels[rt]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-white/20 mt-1.5">Opcional — ajuda o Consultor a separar renda fixa de extra</p>
+                </div>
+              )}
 
               <button
                 onClick={() => etapa2Ok && setEtapa(3)}

@@ -5,6 +5,7 @@ import {
   useData,
   calcTotais,
   calcScore,
+  analyzeBehavior,
   getLast6Months,
   monthLabel,
   nowMonth,
@@ -15,6 +16,7 @@ import { EvolutionChart } from "@/components/EvolutionChart";
 import { MemberAvatar } from "@/components/MemberAvatar";
 import { HeroSection } from "@/components/HeroSection";
 import { LancamentoModal } from "@/components/LancamentoModal";
+import { AuditorPerfil } from "@/components/AuditorPerfil";
 
 export const Route = createFileRoute("/_app/")(({
   head: () => ({
@@ -39,7 +41,8 @@ export const Route = createFileRoute("/_app/")(({
 function Dashboard() {
   const { group } = useAuth();
   const { transacoes, notas, metas } = useData();
-  const [showModal, setShowModal] = useState(false);
+  const [showModal,   setShowModal]   = useState(false);
+  const [showAuditor, setShowAuditor] = useState(false);
 
   const members = Object.values(group?.memberProfiles ?? {});
   const groupName = group?.groupName ?? "Casal";
@@ -66,9 +69,10 @@ function Dashboard() {
     Math.max(0, analysis.score - (5 - i) * 2)
   );
 
-  // Current month totals
+  // Current month totals (incluindo dados do Balanço Potencial)
   const curList = transacoes.filter((t) => t.data?.startsWith(curMonth));
-  const { rec, des } = calcTotais(curList);
+  const { rec, des, economiaPotencial, dinheiroNaMesa, pendentes: pendentesClassif } = calcTotais(curList);
+  const economiaReal = Math.max(0, rec - des);
 
   // Evolution chart data
   const evolutionData = useMemo(() => {
@@ -101,7 +105,27 @@ function Dashboard() {
     };
   });
 
-  const insight = analysis.sugestoes[0]?.desc ?? analysis.alertas[0]?.desc ?? "Vocês estão no caminho certo. Continue assim!";
+  // Motor Preditivo — precisa estar antes do insight
+  const behavior = useMemo(
+    () => analyzeBehavior(
+      transacoes,
+      metas,
+      group?.nivelEconomia ?? "moderado",
+      group?.custoVidaEssencial ?? 0,
+      group?.reservaExistente ?? 0,
+    ),
+    [transacoes, metas, group]
+  );
+
+  // Insight inteligente: prioriza alertas do motor comportamental
+  const insightBase = analysis.sugestoes[0]?.desc ?? analysis.alertas[0]?.desc ?? "Vocês estão no caminho certo. Continue assim!";
+  const insight = behavior.freioDeMetas?.desc
+    ?? behavior.reservaDiagnostico?.desc
+    ?? behavior.alertasComportamentais[0]?.desc
+    ?? insightBase;
+
+  // Flag: grupo ainda não configurou o Auditor
+  const semAuditor = !group?.nivelEconomia;
 
   return (
     <div className="hero-bg">
@@ -139,6 +163,58 @@ function Dashboard() {
             {/* Consultor: largura total no mobile, espaço para ler e interagir */}
             <div className="col-span-2 md:col-span-1">
               <ConsultorCard insight={insight} onAddLancamento={() => setShowModal(true)} />
+            </div>
+          </div>
+        </section>
+
+        {/* ── 1.5. BALANÇO POTENCIAL ── Aparece sempre, mas fica mais rico com classificações */}
+        <section className="mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Economia Real */}
+            <div
+              className="rounded-2xl p-5 border"
+              style={{ background: "oklch(0.16 0.02 150 / 0.25)", borderColor: "oklch(0.55 0.15 150 / 0.25)" }}
+            >
+              <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/40 mb-2">Economia Real</div>
+              <div className="text-[22px] font-semibold tabular-nums" style={{ color: "oklch(0.75 0.14 150)" }}>
+                {fmt(economiaReal)}
+              </div>
+              <div className="text-[11.5px] text-white/35 mt-1">Saldo positivo do mês</div>
+            </div>
+
+            {/* Economia Potencial */}
+            <div
+              className="rounded-2xl p-5 border"
+              style={{ background: "oklch(0.18 0.04 75 / 0.20)", borderColor: "oklch(0.82 0.07 75 / 0.25)" }}
+            >
+              <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/40 mb-2">Poderia Economizar</div>
+              <div className="text-[22px] font-semibold tabular-nums" style={{ color: "oklch(0.82 0.07 75)" }}>
+                {fmt(economiaPotencial)}
+              </div>
+              <div className="text-[11.5px] text-white/35 mt-1">
+                {economiaPotencial > economiaReal
+                  ? `+${fmt(dinheiroNaMesa)} acima do real`
+                  : "Classificar lançamentos para ver"}
+              </div>
+            </div>
+
+            {/* Dinheiro na Mesa */}
+            <div
+              className="rounded-2xl p-5 border"
+              style={{ background: "oklch(0.16 0.04 28 / 0.20)", borderColor: "oklch(0.72 0.14 28 / 0.25)" }}
+            >
+              <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/40 mb-2">Deixaram na Mesa</div>
+              <div className="text-[22px] font-semibold tabular-nums" style={{ color: "oklch(0.72 0.14 28)" }}>
+                {fmt(dinheiroNaMesa)}
+              </div>
+              <div className="text-[11.5px] text-white/35 mt-1">
+                {dinheiroNaMesa > 0 ? "Gastos de desejo este mês" : "Sem gastos de desejo classificados"}
+              </div>
+              {pendentesClassif > 0 && (
+                <div className="mt-1.5 text-[10.5px] text-amber-400/70">
+                  {pendentesClassif} lançamento(s) sem classificação
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -329,6 +405,92 @@ function Dashboard() {
           </aside>
         </section>
 
+        {/* ── CONSULTOR INTELIGENTE ── */}
+        <section className="mt-4">
+          <div className="glass rounded-3xl p-6 border border-border">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[22px]">🧠</span>
+                <div>
+                  <h3 className="text-[14px] font-medium text-foreground">Consultor Inteligente</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Nível: <span className="capitalize font-medium text-champagne">{group?.nivelEconomia ?? "não configurado"}</span>
+                    {behavior.pendentes > 0 && (
+                      <span className="ml-2 text-amber-400">· {behavior.pendentes} lançamento(s) pendente(s)</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAuditor(true)}
+                className="text-[11.5px] px-3 py-1.5 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition"
+              >
+                {semAuditor ? "⚙️ Configurar" : "⚙️ Editar perfil"}
+              </button>
+            </div>
+
+            {semAuditor && (
+              <div className="rounded-2xl p-4 border border-amber-500/20 bg-amber-500/[0.05] mb-4">
+                <p className="text-[12.5px] text-amber-300/80 leading-relaxed">
+                  ✦ Configure o Auditor de Perfil para que o Consultor comece a analisar os hábitos do casal.
+                </p>
+                <button onClick={() => setShowAuditor(true)} className="mt-2 text-[12px] font-medium text-amber-400 hover:text-amber-300 transition">
+                  Configurar agora →
+                </button>
+              </div>
+            )}
+
+            {behavior.alertasComportamentais.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {behavior.alertasComportamentais.map((a, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl bg-orange-500/[0.07] border border-orange-500/15">
+                    <span className="text-[18px] shrink-0">{a.icon}</span>
+                    <div>
+                      <div className="text-[13px] font-medium text-orange-300/90">{a.titulo}</div>
+                      <div className="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">{a.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {behavior.freioDeMetas && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-red-500/[0.07] border border-red-500/15 mb-4">
+                <span className="text-[18px] shrink-0">{behavior.freioDeMetas.icon}</span>
+                <div>
+                  <div className="text-[13px] font-medium text-red-300/90">{behavior.freioDeMetas.titulo}</div>
+                  <div className="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">{behavior.freioDeMetas.desc}</div>
+                </div>
+              </div>
+            )}
+
+            {behavior.reservaDiagnostico && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-500/[0.07] border border-blue-500/15 mb-4">
+                <span className="text-[18px] shrink-0">{behavior.reservaDiagnostico.icon}</span>
+                <div className="flex-1">
+                  <div className="text-[13px] font-medium text-blue-300/90">{behavior.reservaDiagnostico.titulo}</div>
+                  <div className="text-[11.5px] text-muted-foreground mt-0.5 leading-relaxed">{behavior.reservaDiagnostico.desc}</div>
+                  {behavior.reservaDiagnostico.ideal > 0 && (
+                    <div className="mt-2 h-[4px] rounded-full bg-white/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-400/60 transition-all duration-700"
+                        style={{ width: `${Math.min(100, ((group?.reservaExistente ?? 0) / behavior.reservaDiagnostico.ideal) * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!semAuditor && behavior.alertasComportamentais.length === 0 && !behavior.freioDeMetas && !behavior.reservaDiagnostico && (
+              <div className="text-center py-4">
+                <div className="text-[28px] mb-2">✅</div>
+                <p className="text-[13px] text-muted-foreground">Nenhum alerta comportamental. Vocês estão no caminho certo!</p>
+              </div>
+            )}
+          </div>
+        </section>
+
         <footer className="mt-16 mb-4 flex items-center justify-between text-[11.5px] text-muted-foreground">
           <span className="tracking-[0.2em] uppercase">Sincronia</span>
           <span>Construído para {groupName}.</span>
@@ -337,6 +499,9 @@ function Dashboard() {
 
       {/* Modal de lançamento global do dashboard */}
       <LancamentoModal isOpen={showModal} onClose={() => setShowModal(false)} />
+
+      {/* Auditor de Perfil */}
+      <AuditorPerfil isOpen={showAuditor} onClose={() => setShowAuditor(false)} />
     </div>
   );
 }

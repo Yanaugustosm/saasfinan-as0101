@@ -31,6 +31,10 @@ export interface Transacao {
   obs?: string;
   groupId: string;
   userId: string;
+  // Campos do Consultor Inteligente (opcionais, retrocompatíveis)
+  tipoGasto?: "essencial" | "desejo" | "emergencia";  // Só para despesas
+  receitaTipo?: "normal" | "extra";                    // Só para receitas
+  pendenteInteligencia?: boolean;                       // Lançado sem classificação
 }
 
 export interface Nota {
@@ -220,7 +224,25 @@ export const getLast6Months = () => {
 export const calcTotais = (list: Transacao[]) => {
   const rec = list.filter((t) => t.tipo === "receita").reduce((s, t) => s + (t.valor || 0), 0);
   const des = list.filter((t) => t.tipo === "despesa").reduce((s, t) => s + (t.valor || 0), 0);
-  return { rec, des, saldo: rec - des };
+
+  // Fase 2: Balanço Potencial
+  // gastos marcados como 'desejo' = dinheiro que poderia ter sido poupado
+  const desEssencial = list
+    .filter((t) => t.tipo === "despesa" && t.tipoGasto === "essencial")
+    .reduce((s, t) => s + (t.valor || 0), 0);
+  const desDesejo = list
+    .filter((t) => t.tipo === "despesa" && t.tipoGasto === "desejo")
+    .reduce((s, t) => s + (t.valor || 0), 0);
+  const recExtra = list
+    .filter((t) => t.tipo === "receita" && t.receitaTipo === "extra")
+    .reduce((s, t) => s + (t.valor || 0), 0);
+  const pendentes = list.filter((t) => t.pendenteInteligencia).length;
+
+  const saldo = rec - des;
+  const economiaPotencial = saldo + desDesejo; // o que poderia ter sobrado
+  const dinheiroNaMesa = Math.max(0, desDesejo); // o que "deixou na mesa"
+
+  return { rec, des, saldo, desEssencial, desDesejo, recExtra, pendentes, economiaPotencial, dinheiroNaMesa };
 };
 
 export const monthLabel = (m: string) => {
@@ -291,9 +313,147 @@ export function calcScore(transacoes: Transacao[], notas: Nota[], metas: Meta[])
   if (savingsRate > 25) sugestoes.push({ icon: "📈", titulo: "Comece a investir", desc: "Com poupança sólida, Tesouro Direto ou CDB protegem de inflação." });
   if (avgSaldo > 0 && avgSaldo < rec * 0.1) sugestoes.push({ icon: "🛡️", titulo: "Monte sua reserva de emergência", desc: "Objetivo: 6 meses de despesas guardados em liquidez diária." });
 
+
   return {
     score, nivel, cor, desc, alertas, sugestoes,
     monthData, savingsRate, forecast, catSpend, desTrend,
     curTotais: { rec, des, saldo },
   };
+}
+
+// ─── Motor Preditivo (Fase 3) ─────────────────────────────────────────────────
+
+export type NivelEconomia = "conforto" | "moderado" | "agressivo";
+
+/**
+ * Retorna alertas comportamentais baseados no histórico dos últimos 30 dias.
+ * Thresholds variam pelo nível de economia escolhido pelo casal.
+ */
+export function analyzeBehavior(
+  transacoes: Transacao[],
+  metas: Meta[],
+  nivelEconomia: NivelEconomia = "moderado",
+  custoVidaEssencial = 0,
+  reservaExistente = 0
+) {
+  const hoje = new Date();
+  const cutoff = new Date(hoje.getFullYear(), hoje.getMonth() - 1, hoje.getDate())
+    .toISOString()
+    .split("T")[0];
+  const ultimas = transacoes.filter(
+    (t) => t.tipo === "despesa" && t.data >= cutoff
+  );
+
+  // Contagem por categoria nos últimos 30 dias
+  const catCount: Record<string, number> = {};
+  const catSpend: Record<string, number> = {};
+  ultimas.forEach((t) => {
+    catCount[t.categoria] = (catCount[t.categoria] || 0) + 1;
+    catSpend[t.categoria] = (catSpend[t.categoria] || 0) + t.valor;
+  });
+
+  // Threshold de frequência por nível (ex: delivery/restaurantes)
+  const freqThreshold: Record<NivelEconomia, number> = {
+    agressivo: 2,
+    moderado:  5,
+    conforto:  10,
+  };
+  const threshold = freqThreshold[nivelEconomia];
+
+  const alertasComportamentais: { icon: string; titulo: string; desc: string }[] = [];
+
+  // Alerta de frequência de gadinhos (delivery, restaurantes)
+  const catGadinhos = ["Restaurantes", "Alimentação", "Lazer", "Streaming", "Viagens"];
+  catGadinhos.forEach((cat) => {
+    if ((catCount[cat] || 0) > threshold) {
+      const vezes = catCount[cat];
+      alertasComportamentais.push({
+        icon: "🍔",
+        titulo: `${vezes}x em ${cat}`,
+        desc: `Vocês gastaram ${vezes} vezes em ${cat} neste mês. Para o nível ${nivelEconomia}, o ideal é até ${threshold}x.`,
+      });
+    }
+  });
+
+  // Freio de Metas
+  const metasAtivas = metas.filter((m) => m.ativo && m.valor > 0);
+  const aporteNecessario = metasAtivas.reduce((sum, m) => {
+    if (!m.prazo) return sum;
+    const mesesRestantes = Math.max(
+      1,
+      Math.round(
+        (new Date(m.prazo).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24 * 30)
+      )
+    );
+    return sum + (m.valor - m.acumulado) / mesesRestantes;
+  }, 0);
+
+  const { saldo } = calcTotais(
+    transacoes.filter((t) => t.data?.startsWith(new Date().toISOString().slice(0, 7)))
+  );
+  const saldoLivre = Math.max(0, saldo);
+
+  const freioDeMetas =
+    metasAtivas.length >= 3 && aporteNecessario > saldoLivre * 0.8
+      ? {
+          icon: "🚦",
+          titulo: "Freio de Metas",
+          desc: `Vocês têm ${metasAtivas.length} metas ativas, mas o fluxo atual suporta aportes de ${fmt(saldoLivre * 0.5)}/mês. Considere pausar a meta de menor prioridade.`,
+        }
+      : null;
+
+  // Diagnóstico de Reserva de Emergência
+  const reservaIdeal = custoVidaEssencial * 6;
+  const precisaReserva = reservaIdeal > 0 && reservaExistente < reservaIdeal;
+  const reservaFaltando = Math.max(0, reservaIdeal - reservaExistente);
+  const reservaDiagnostico = precisaReserva
+    ? {
+        icon: "🛡️",
+        titulo: "Reserva de Emergência",
+        desc: `Meta ideal: ${fmt(reservaIdeal)} (6 meses de custos essenciais). Faltam ${fmt(reservaFaltando)}.`,
+        faltando: reservaFaltando,
+        ideal: reservaIdeal,
+      }
+    : null;
+
+  // Pendentes de inteligência (lançamentos sem classificação)
+  const pendentes = transacoes.filter((t) => t.pendenteInteligencia).length;
+
+  return {
+    alertasComportamentais,
+    freioDeMetas,
+    reservaDiagnostico,
+    pendentes,
+    aporteNecessario,
+    saldoLivre,
+  };
+}
+
+/**
+ * Calcula o Nível de Economia sugerido com base na renda e nas metas ativas.
+ */
+export function calcNivelSugerido(
+  recMedia: number,
+  custoEssencial: number,
+  metas: Meta[]
+): { nivel: NivelEconomia; motivo: string } {
+  const aporteNecessario = metas
+    .filter((m) => m.ativo && m.prazo)
+    .reduce((sum, m) => {
+      const hoje = new Date();
+      const meses = Math.max(
+        1,
+        Math.round(
+          (new Date(m.prazo!).getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24 * 30)
+        )
+      );
+      return sum + (m.valor - m.acumulado) / meses;
+    }, 0);
+
+  const folga = recMedia - custoEssencial - aporteNecessario;
+  const pctFolga = recMedia > 0 ? (folga / recMedia) * 100 : 0;
+
+  if (pctFolga >= 30) return { nivel: "conforto", motivo: "Vocês têm folga financeira confortável para seus objetivos." };
+  if (pctFolga >= 15) return { nivel: "moderado", motivo: "Com disciplina moderada, vocês alcançam as metas no prazo." };
+  return { nivel: "agressivo", motivo: "Para bater as metas no prazo, é necessário controle rigoroso de gastos." };
 }

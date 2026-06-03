@@ -50,6 +50,11 @@ export interface GroupData {
   memberProfiles: Record<string, UserProfile>;
   inviteCode: string;
   createdAt: string;
+  // Perfilamento Comportamental (Consultor Inteligente)
+  nivelEconomia?: "conforto" | "moderado" | "agressivo";
+  custoVidaEssencial?: number;       // Soma das despesas essenciais do mês médio
+  reservaExistente?: number;          // Valor já acumulado em reserva de emergência
+  reservaMetaId?: string;             // ID da Meta que representa a Reserva
 }
 
 interface AuthContextValue {

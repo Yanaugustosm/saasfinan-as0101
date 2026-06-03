@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { AuditorPerfil } from "@/components/AuditorPerfil";
 
 export const Route = createFileRoute("/_app/casal")({
   head: () => ({
@@ -30,6 +31,7 @@ function CasalPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showAuditor, setShowAuditor] = useState(false);
 
   const members = Object.values(group?.memberProfiles ?? {});
   const inviteCode = group?.inviteCode ?? "——";
@@ -190,6 +192,35 @@ function CasalPage() {
           </div>
         </div>
 
+        {/* Card do Consultor Inteligente */}
+        <div className="mt-4 glass rounded-2xl p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Consultor Inteligente</div>
+              <p className="mt-1.5 text-[15px] text-foreground">
+                {group?.nivelEconomia
+                  ? <>Nível: <span className="capitalize text-champagne font-medium">{group.nivelEconomia}</span></>
+                  : "Perfil financeiro não configurado"}
+              </p>
+              {group?.custoVidaEssencial ? (
+                <p className="text-[12.5px] text-muted-foreground mt-1">
+                  Custo essencial estimado: <strong className="text-white/60">R$ {group.custoVidaEssencial.toLocaleString("pt-BR")}/mês</strong>
+                </p>
+              ) : (
+                <p className="text-[12.5px] text-muted-foreground mt-1">
+                  Configure para ativar os alertas comportamentais do Consultor.
+                </p>
+              )}
+            </div>
+            <button
+              onClick={() => setShowAuditor(true)}
+              className="h-10 px-4 rounded-full border border-champagne/30 text-[13px] text-champagne hover:bg-champagne/10 transition"
+            >
+              {group?.nivelEconomia ? "⚙️ Editar" : "🧠 Configurar"}
+            </button>
+          </div>
+        </div>
+
         <footer className="mt-16 mb-4 flex items-center justify-between text-[11.5px] text-muted-foreground">
           <span className="tracking-[0.2em] uppercase">Sincronia</span>
           <button
@@ -200,6 +231,8 @@ function CasalPage() {
           </button>
         </footer>
       </div>
+
+      <AuditorPerfil isOpen={showAuditor} onClose={() => setShowAuditor(false)} />
     </div>
   );
 }

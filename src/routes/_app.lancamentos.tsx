@@ -84,7 +84,8 @@ function LancamentosPage() {
       .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
   }, [filtered, viewMode]);
 
-  const { rec, des } = calcTotais(filtered);
+  const { rec, des, economiaPotencial, dinheiroNaMesa, pendentes: pendentesClassif } = calcTotais(filtered);
+  const economiaReal = Math.max(0, rec - des);
 
   const openNew  = () => { setEditTarget(null); setShowModal(true); };
   const openEdit = (t: Transacao) => { setEditTarget(t); setShowModal(true); };
@@ -123,6 +124,29 @@ function LancamentosPage() {
             </button>
           </div>
         </div>
+
+        {/* Mini-painel Balanço Potencial */}
+        {filtered.length > 0 && (
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="glass rounded-xl px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 mb-1">Economia Real</div>
+              <div className="text-[15px] font-medium tabular" style={{ color: "oklch(0.75 0.14 150)" }}>{fmt(economiaReal)}</div>
+            </div>
+            <div className="glass rounded-xl px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 mb-1">Poderia Economizar</div>
+              <div className="text-[15px] font-medium tabular" style={{ color: "oklch(0.82 0.07 75)" }}>{fmt(economiaPotencial)}</div>
+            </div>
+            <div className="glass rounded-xl px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.14em] text-white/35 mb-1">Deixou na Mesa</div>
+              <div className="text-[15px] font-medium tabular" style={{ color: "oklch(0.72 0.14 28)" }}>
+                {fmt(dinheiroNaMesa)}
+              </div>
+              {pendentesClassif > 0 && (
+                <div className="text-[9.5px] text-amber-400/60 mt-0.5">{pendentesClassif} sem classif.</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mt-8 glass rounded-2xl p-2 flex flex-col md:flex-row items-stretch md:items-center gap-2">
@@ -231,8 +255,26 @@ function LancamentosPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-[14px] text-foreground truncate">{t.descricao}</div>
-                              <div className="text-[11.5px] text-muted-foreground">
-                                {t.categoria} · por {owner?.name ?? "você"}
+                              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                                <span className="text-[11.5px] text-muted-foreground">
+                                  {t.categoria} · por {owner?.name ?? "você"}
+                                </span>
+                                {/* Badge de classificação inteligente */}
+                                {t.tipoGasto === "essencial" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/20">✅ Essencial</span>
+                                )}
+                                {t.tipoGasto === "desejo" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400/80 border border-amber-500/20">✨ Desejo</span>
+                                )}
+                                {t.tipoGasto === "emergencia" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400/80 border border-red-500/20">🚨 Emergência</span>
+                                )}
+                                {t.receitaTipo === "extra" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400/80 border border-blue-500/20">🎯 Extra</span>
+                                )}
+                                {t.pendenteInteligencia && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/30 border border-white/10">Pendente</span>
+                                )}
                               </div>
                             </div>
                             <MemberAvatar emoji={owner?.emoji ?? "👤"} name={owner?.name} size={26} />
