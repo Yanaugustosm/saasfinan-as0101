@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppSonhosRouteImport } from './routes/_app.sonhos'
@@ -16,8 +17,12 @@ import { Route as AppResumoRouteImport } from './routes/_app.resumo'
 import { Route as AppNotasRouteImport } from './routes/_app.notas'
 import { Route as AppLancamentosRouteImport } from './routes/_app.lancamentos'
 import { Route as AppCasalRouteImport } from './routes/_app.casal'
-import { Route as AppAdminRouteImport } from './routes/_app.admin'
 
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -52,15 +57,10 @@ const AppCasalRoute = AppCasalRouteImport.update({
   path: '/casal',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAdminRoute = AppAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/admin': typeof AppAdminRoute
+  '/admin': typeof AdminRoute
   '/casal': typeof AppCasalRoute
   '/lancamentos': typeof AppLancamentosRoute
   '/notas': typeof AppNotasRoute
@@ -68,7 +68,7 @@ export interface FileRoutesByFullPath {
   '/sonhos': typeof AppSonhosRoute
 }
 export interface FileRoutesByTo {
-  '/admin': typeof AppAdminRoute
+  '/admin': typeof AdminRoute
   '/casal': typeof AppCasalRoute
   '/lancamentos': typeof AppLancamentosRoute
   '/notas': typeof AppNotasRoute
@@ -79,7 +79,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
-  '/_app/admin': typeof AppAdminRoute
+  '/admin': typeof AdminRoute
   '/_app/casal': typeof AppCasalRoute
   '/_app/lancamentos': typeof AppLancamentosRoute
   '/_app/notas': typeof AppNotasRoute
@@ -109,7 +109,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
-    | '/_app/admin'
+    | '/admin'
     | '/_app/casal'
     | '/_app/lancamentos'
     | '/_app/notas'
@@ -120,10 +120,18 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  AdminRoute: typeof AdminRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -173,18 +181,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCasalRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/admin': {
-      id: '/_app/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AppAdminRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
 interface AppRouteChildren {
-  AppAdminRoute: typeof AppAdminRoute
   AppCasalRoute: typeof AppCasalRoute
   AppLancamentosRoute: typeof AppLancamentosRoute
   AppNotasRoute: typeof AppNotasRoute
@@ -194,7 +194,6 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAdminRoute: AppAdminRoute,
   AppCasalRoute: AppCasalRoute,
   AppLancamentosRoute: AppLancamentosRoute,
   AppNotasRoute: AppNotasRoute,
@@ -207,6 +206,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  AdminRoute: AdminRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
