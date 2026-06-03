@@ -154,9 +154,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Perfil normal sem deleção
+      // ── Auto-Healing: sincroniza o cache do grupo com o perfil real ──────────
+      // Isso roda SEMPRE que um perfil normal carrega, independente do nome.
+      // Garante que a tela inicial nunca fique com dados desatualizados.
       setProfile(p);
-      if (p.groupId) subscribeToGroup(p.groupId);
+      if (p.groupId) {
+        subscribeToGroup(p.groupId);
+        // Compara perfil real com o que está no cache do grupo
+        try {
+          const groupSnap = await getDoc(doc(db, "groups", p.groupId));
+          if (groupSnap.exists()) {
+            const cached = (groupSnap.data() as any)?.memberProfiles?.[uid];
+            const nameChanged  = cached?.name  !== p.name;
+            const emojiChanged = cached?.emoji !== p.emoji;
+            if (nameChanged || emojiChanged) {
+              await updateDoc(doc(db, "groups", p.groupId), {
+                [`memberProfiles.${uid}.name`]:  p.name,
+                [`memberProfiles.${uid}.emoji`]: p.emoji,
+              });
+            }
+          }
+        } catch (_) { /* silencioso */ }
+      }
       return;
     }
 
