@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import type { UserProfile, GroupData } from "@/contexts/AuthContext";
 
-export const Route = createFileRoute("/_app/admin")({
+export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Portal · Sincronia" }] }),
   component: AdminPortal,
 });
