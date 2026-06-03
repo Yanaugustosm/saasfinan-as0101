@@ -172,7 +172,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         getDocs(collection(db, "transacoes")),
       ]);
       setUsers(us.docs.map(d => d.data() as UserProfile));
-      setGroups(gs.docs.map(d => ({ id: d.id, ...(d.data() as GroupData) })));
+      setGroups(gs.docs.map(d => { const { id: _id, ...rest } = d.data() as GroupData; return { id: d.id, ...rest }; }));
       setTxCount(ts.size);
     } catch (e: any) {
       showToast(`Erro ao carregar: ${e?.message ?? "Verifique as regras do Firestore"}`, false);

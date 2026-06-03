@@ -164,7 +164,7 @@ export function AuthScreen() {
                   {EMOJIS.map((em) => (
                     <button key={em} onClick={() => setEmoji(em)}
                       className={`size-9 rounded-lg text-lg transition ${emoji === em ? "ring-2" : "border border-border hover:border-muted-foreground"}`}
-                      style={emoji === em ? { border: `2px solid ${pal.accent}`, background: `${pal.accent}20`, ringColor: pal.accent } : {}}>
+                      style={emoji === em ? { border: `2px solid ${pal.accent}`, background: `${pal.accent}20`, outline: `2px solid ${pal.accent}`, outlineOffset: '1px' } : {}}>
                       {em}
                     </button>
                   ))}
@@ -177,7 +177,7 @@ export function AuthScreen() {
                   {PALETTES.map((p) => (
                     <button key={p.id} onClick={() => setPalId(p.id)}
                       className={`size-9 rounded-full transition ${palId === p.id ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
-                      style={{ background: p.bg, border: `2px solid ${p.accent}`, ...(palId === p.id ? { ringColor: p.accent } : {}) }}
+                      style={{ background: p.bg, border: `2px solid ${p.accent}` }}
                       title={p.name} />
                   ))}
                 </div>
