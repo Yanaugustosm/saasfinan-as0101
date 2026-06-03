@@ -55,6 +55,7 @@ export interface GroupData {
   custoVidaEssencial?: number;       // Soma das despesas essenciais do mês médio
   reservaExistente?: number;          // Valor já acumulado em reserva de emergência
   reservaMetaId?: string;             // ID da Meta que representa a Reserva
+  mesesReservaIdeal?: number;         // 0=desativada, 3=arrojado, 6=equilibrado, 12=conservador
 }
 
 interface AuthContextValue {

@@ -72,11 +72,12 @@ export function AuditorPerfil({ isOpen, onClose }: AuditorPerfilProps) {
     return validos.length > 0 ? Math.round(validos.reduce((a, b) => a + b, 0) / validos.length) : 0;
   }, [transacoes]);
 
-  const [custo,    setCusto]    = useState(String(group?.custoVidaEssencial ?? mediaDespesas));
-  const [reserva,  setReserva]  = useState(String(group?.reservaExistente ?? 0));
-  const [nivel,    setNivel]    = useState<NivelEconomia>(group?.nivelEconomia ?? "moderado");
-  const [saving,   setSaving]   = useState(false);
-  const [step,     setStep]     = useState(0); // 0 = custo, 1 = reserva, 2 = nível
+  const [custo,        setCusto]        = useState(String(group?.custoVidaEssencial ?? mediaDespesas));
+  const [reserva,      setReserva]      = useState(String(group?.reservaExistente ?? 0));
+  const [mesesReserva, setMesesReserva] = useState<number>(group?.mesesReservaIdeal ?? 6);
+  const [nivel,        setNivel]        = useState<NivelEconomia>(group?.nivelEconomia ?? "moderado");
+  const [saving,       setSaving]       = useState(false);
+  const [step,         setStep]         = useState(0); // 0 = custo, 1 = reserva, 2 = nível
 
   const custoNum   = parseFloat(custo.replace(",", "."))   || 0;
   const reservaNum = parseFloat(reserva.replace(",", ".")) || 0;
@@ -94,6 +95,7 @@ export function AuditorPerfil({ isOpen, onClose }: AuditorPerfilProps) {
         custoVidaEssencial: custoNum,
         reservaExistente:   reservaNum,
         nivelEconomia:      nivel,
+        mesesReservaIdeal:  mesesReserva,
       });
       onClose();
     } finally {
@@ -196,41 +198,117 @@ export function AuditorPerfil({ isOpen, onClose }: AuditorPerfilProps) {
           {/* ── STEP 1: Reserva de Emergência ── */}
           {step === 1 && (
             <div className="space-y-4 animate-fade-up">
-              <div
-                className="rounded-2xl p-4 border"
-                style={{ background: `${accent}08`, borderColor: `${accent}20` }}
-              >
-                <p className="text-[13px] text-white/60 leading-relaxed">
-                  <strong className="text-white/80">Reserva de emergência</strong> é o dinheiro guardado para imprevistos. A recomendação é ter entre <strong className="text-white/70">6 a 12 meses</strong> do custo essencial guardado.
-                </p>
-                <p className="text-[12px] mt-2" style={{ color: accent }}>
-                  Meta ideal para vocês: <strong>{fmt(custoNum * 6)}</strong>
-                </p>
+
+              {/* Seletor de meses — o Consultor age como conselheiro aqui */}
+              <div>
+                <div className="text-[10.5px] uppercase tracking-[0.20em] text-white/30 mb-3">
+                  Quantos meses de reserva querem ter?
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    {
+                      meses: 0,
+                      emoji: "🛑",
+                      label: "Desativar",
+                      desc: "Não queremos focar em reserva agora. O Consultor vai respeitar essa decisão e não cobrar nada sobre isso.",
+                    },
+                    {
+                      meses: 3,
+                      emoji: "🚀",
+                      label: "3 meses — Acelerado",
+                      desc: "Ideal para casais com renda estável (CLT, concurso público). Libera mais caixa para acelerar os sonhos.",
+                    },
+                    {
+                      meses: 6,
+                      emoji: "⚖️",
+                      label: "6 meses — Equilibrado",
+                      desc: "A recomendação padrão do Consultor. Balanço entre segurança e liberdade para investir nos sonhos.",
+                    },
+                    {
+                      meses: 12,
+                      emoji: "🛡️",
+                      label: "12 meses — Conservador",
+                      desc: "Ideal para autônomos, empreendedores ou quem quer dormir tranquilo antes de qualquer outra meta.",
+                    },
+                  ] as const).map((op) => {
+                    const sel = mesesReserva === op.meses;
+                    return (
+                      <button
+                        key={op.meses}
+                        onClick={() => setMesesReserva(op.meses)}
+                        className="text-left px-3 py-3 rounded-2xl border transition-all col-span-1"
+                        style={sel
+                          ? { background: `${accent}12`, borderColor: `${accent}40` }
+                          : { background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.07)" }
+                        }
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[18px]">{op.emoji}</span>
+                          <span className="text-[12.5px] font-medium text-white/80">{op.label}</span>
+                          {sel && (
+                            <span
+                              className="ml-auto size-4 rounded-full flex items-center justify-center text-[10px]"
+                              style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
+                            >✓</span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-white/35 leading-relaxed">{op.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              <div>
-                <div className="text-[10.5px] uppercase tracking-[0.20em] text-white/30 mb-2">
-                  Quanto vocês já têm guardado?
+              {/* Saldo atual da reserva — some se escolheram Desativar */}
+              {mesesReserva > 0 && (
+                <div>
+                  <div
+                    className="rounded-2xl p-4 border mb-3"
+                    style={{ background: `${accent}08`, borderColor: `${accent}20` }}
+                  >
+                    <p className="text-[13px] text-white/60 leading-relaxed">
+                      <strong className="text-white/80">Reserva de emergência</strong> é o dinheiro guardado para imprevistos. A meta de vocês: <strong className="text-white/70">{mesesReserva} meses</strong> de custo essencial.
+                    </p>
+                    <p className="text-[12px] mt-2" style={{ color: accent }}>
+                      Meta ideal para vocês: <strong>{fmt(custoNum * mesesReserva)}</strong>
+                    </p>
+                  </div>
+
+                  <div className="text-[10.5px] uppercase tracking-[0.20em] text-white/30 mb-2">
+                    Quanto vocês já têm guardado?
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={reserva}
+                      onChange={(e) => setReserva(e.target.value)}
+                      placeholder="0"
+                      className="w-full h-13 pl-10 pr-4 rounded-2xl text-[16px] bg-white/[0.05] border border-white/[0.08] text-white/85 focus:outline-none focus:border-white/20 transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  {reservaNum > 0 && (
+                    <p className="text-[11px] text-white/35 mt-1.5">
+                      {reservaNum >= custoNum * mesesReserva
+                        ? "✅ Reserva completa! Vocês estão protegidos."
+                        : `Faltam ${fmt(Math.max(0, custoNum * mesesReserva - reservaNum))} para completar.`}
+                    </p>
+                  )}
                 </div>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={reserva}
-                    onChange={(e) => setReserva(e.target.value)}
-                    placeholder="0"
-                    className="w-full h-13 pl-10 pr-4 rounded-2xl text-[16px] bg-white/[0.05] border border-white/[0.08] text-white/85 focus:outline-none focus:border-white/20 transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                </div>
-                {reservaNum > 0 && (
-                  <p className="text-[11px] text-white/35 mt-1.5">
-                    {reservaNum >= custoNum * 6
-                      ? "✅ Reserva completa! Vocês estão protegidos."
-                      : `Faltam ${fmt(Math.max(0, custoNum * 6 - reservaNum))} para completar a reserva ideal.`}
+              )}
+
+              {/* Feedback quando desativam a reserva */}
+              {mesesReserva === 0 && (
+                <div
+                  className="rounded-2xl p-4 border"
+                  style={{ background: "oklch(0.16 0.02 60 / 0.20)", borderColor: "oklch(0.72 0.10 60 / 0.25)" }}
+                >
+                  <p className="text-[12.5px] text-white/55 leading-relaxed">
+                    💡 <strong className="text-white/70">O Consultor entende.</strong> Sem cobranças sobre reserva. Nosso foco será 100% em otimizar seus gastos e acelerar suas metas.
                   </p>
-                )}
-              </div>
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <button

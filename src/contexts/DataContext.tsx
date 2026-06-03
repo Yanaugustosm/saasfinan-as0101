@@ -338,7 +338,8 @@ export function analyzeBehavior(
   metas: Meta[],
   nivelEconomia: NivelEconomia = "moderado",
   custoVidaEssencial = 0,
-  reservaExistente = 0
+  reservaExistente = 0,
+  mesesReservaIdeal = 6   // 0=desativada pelo casal, 3=arrojado, 6=equilibrado, 12=conservador
 ) {
   const hoje = new Date();
   const cutoff = new Date(hoje.getFullYear(), hoje.getMonth() - 1, hoje.getDate())
@@ -425,18 +426,44 @@ export function analyzeBehavior(
       : null;
 
   // Diagnóstico de Reserva de Emergência
-  const reservaIdeal = custoVidaEssencial * 6;
-  const precisaReserva = reservaIdeal > 0 && reservaExistente < reservaIdeal;
-  const reservaFaltando = Math.max(0, reservaIdeal - reservaExistente);
-  const reservaDiagnostico = precisaReserva
-    ? {
+  // mesesReservaIdeal === 0 significa que o casal decidiu não focar em reserva agora.
+  // O Consultor respeita essa decisão e para de cobrar.
+  let reservaDiagnostico: {
+    icon: string;
+    titulo: string;
+    desc: string;
+    faltando: number;
+    ideal: number;
+    desativada?: boolean;
+  } | null = null;
+
+  if (mesesReservaIdeal === 0) {
+    // Casal optou por não focar em reserva — Consultor não cobra, mas registra a intenção
+    reservaDiagnostico = null;
+  } else {
+    const reservaIdeal = custoVidaEssencial * mesesReservaIdeal;
+    const reservaFaltando = Math.max(0, reservaIdeal - reservaExistente);
+    const precisaReserva = reservaIdeal > 0 && reservaExistente < reservaIdeal;
+
+    // Texto consultivo varia conforme os meses escolhidos
+    const descMeses: Record<number, string> = {
+      3:  "3 meses (perfil acelerado). Ótimo para quem tem renda estável e quer acelerar os sonhos.",
+      6:  "6 meses (perfil equilibrado). A recomendação padrão para a maioria dos casais.",
+      12: "12 meses (perfil conservador). Ideal para autônomos ou quem valoriza máxima segurança.",
+    };
+    const descPerfil = descMeses[mesesReservaIdeal]
+      ?? `${mesesReservaIdeal} meses de custo essencial guardados.`;
+
+    if (precisaReserva) {
+      reservaDiagnostico = {
         icon: "🛡️",
         titulo: "Reserva de Emergência",
-        desc: `Meta ideal: ${fmt(reservaIdeal)} (6 meses de custos essenciais). Faltam ${fmt(reservaFaltando)}.`,
+        desc: `Meta de vocês: ${fmt(reservaIdeal)} — ${descPerfil} Faltam ${fmt(reservaFaltando)} para completar.`,
         faltando: reservaFaltando,
         ideal: reservaIdeal,
-      }
-    : null;
+      };
+    }
+  }
 
   // Pendentes de inteligência (lançamentos sem classificação)
   const pendentes = transacoes.filter((t) => t.pendenteInteligencia).length;

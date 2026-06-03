@@ -113,6 +113,7 @@ function Dashboard() {
       group?.nivelEconomia ?? "moderado",
       group?.custoVidaEssencial ?? 0,
       group?.reservaExistente ?? 0,
+      group?.mesesReservaIdeal ?? 6,
     ),
     [transacoes, metas, group]
   );
