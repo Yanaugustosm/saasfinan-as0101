@@ -57,6 +57,7 @@ export interface GroupData {
   custoMoradia?: number;              // Aluguel, condomínio, financiamento
   custoMercado?: number;              // Mercado, feira, alimentação base
   custoAssinaturas?: number;          // Streaming, internet, apps
+  assinaturasDetalhadas?: Record<string, number>; // Ex: { netflix: 39.90, spotify: 21.90 }
   custoTransporte?: number;           // Combustível, transporte público, Uber
   custoVidaEssencial?: number;        // Soma calculada dos 4 custos acima
   reservaExistente?: number;          // Valor já acumulado em reserva de emergência
