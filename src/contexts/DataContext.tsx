@@ -339,7 +339,10 @@ export function analyzeBehavior(
   nivelEconomia: NivelEconomia = "moderado",
   custoVidaEssencial = 0,
   reservaExistente = 0,
-  mesesReservaIdeal = 6   // 0=desativada pelo casal, 3=arrojado, 6=equilibrado, 12=conservador
+  mesesReservaIdeal = 6,
+  // Nível 2: dados declarados na Anamnese para cruzar com a realidade
+  rendaDeclarada = 0,
+  custoFixoDeclarado = 0
 ) {
   const hoje = new Date();
   const cutoff = new Date(hoje.getFullYear(), hoje.getMonth() - 1, hoje.getDate())
@@ -366,6 +369,46 @@ export function analyzeBehavior(
   const threshold = freqThreshold[nivelEconomia];
 
   const alertasComportamentais: { icon: string; titulo: string; desc: string }[] = [];
+
+  // ── Nível 2: Alertas de Desvio (compara o declarado com o real) ────────────
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  const { rec: recMesAtual, des: desMesAtual } = calcTotais(
+    transacoes.filter((t) => t.data?.startsWith(mesAtual))
+  );
+
+  // Renda efetiva: usa real se já houver lançamentos, senão usa a declarada na Anamnese
+  const rendaEfetiva = recMesAtual > 0 ? recMesAtual : rendaDeclarada;
+
+  // Alerta: Custos fixos reais ultrapassaram o declarado na Anamnese
+  if (custoFixoDeclarado > 0 && desMesAtual > custoFixoDeclarado * 1.10) {
+    const excesso = desMesAtual - custoFixoDeclarado;
+    alertasComportamentais.push({
+      icon: "📊",
+      titulo: "Custos acima do planejado",
+      desc: `Os gastos deste mês (${fmt(desMesAtual)}) ultrapassaram em ${fmt(excesso)} o que vocês declararam na configuração. Revise os custos fixos.`,
+    });
+  }
+
+  // Alerta: Sobra de caixa — sugere aportar na meta prioritária
+  const metaPrioritaria = metas
+    .filter((m) => m.ativo && m.valor > 0 && m.acumulado < m.valor)
+    .sort((a, b) => {
+      // Prioriza a meta com prazo mais próximo
+      if (!a.prazo) return 1;
+      if (!b.prazo) return -1;
+      return new Date(a.prazo).getTime() - new Date(b.prazo).getTime();
+    })[0];
+
+  if (rendaEfetiva > 0 && desMesAtual > 0) {
+    const sobraMes = rendaEfetiva - desMesAtual;
+    if (sobraMes > rendaEfetiva * 0.20 && metaPrioritaria) {
+      alertasComportamentais.push({
+        icon: "💡",
+        titulo: `Sobra de ${fmt(sobraMes)} este mês`,
+        desc: `Vocês estão ${fmt(sobraMes)} positivos. Que tal destinar parte disso para a meta "${metaPrioritaria.titulo}"?`,
+      });
+    }
+  }
 
   // Alerta de frequência de gadinhos (delivery, restaurantes)
   const catGadinhos = ["Restaurantes", "Alimentação", "Lazer", "Streaming", "Viagens"];

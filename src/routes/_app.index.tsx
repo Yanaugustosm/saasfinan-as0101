@@ -114,6 +114,8 @@ function Dashboard() {
       group?.custoVidaEssencial ?? 0,
       group?.reservaExistente ?? 0,
       group?.mesesReservaIdeal ?? 6,
+      group?.rendaDeclarada ?? 0,        // Nível 2: fallback para primeiro mês
+      group?.custoVidaEssencial ?? 0,    // Nível 2: baseline declarado na Anamnese
     ),
     [transacoes, metas, group]
   );

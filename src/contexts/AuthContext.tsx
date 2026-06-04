@@ -50,12 +50,18 @@ export interface GroupData {
   memberProfiles: Record<string, UserProfile>;
   inviteCode: string;
   createdAt: string;
-  // Perfilamento Comportamental (Consultor Inteligente)
+  // ── Anamnese Financeira (Nível 1 — coletado no Onboarding) ────────────────
   nivelEconomia?: "conforto" | "moderado" | "agressivo";
-  custoVidaEssencial?: number;       // Soma das despesas essenciais do mês médio
+  dinamicaRenda?: "um_provedor" | "dois_provedores"; // Quem gera renda no casal
+  rendaDeclarada?: number;            // Renda líquida somada declarada na Anamnese
+  custoMoradia?: number;              // Aluguel, condomínio, financiamento
+  custoMercado?: number;              // Mercado, feira, alimentação base
+  custoAssinaturas?: number;          // Streaming, internet, apps
+  custoTransporte?: number;           // Combustível, transporte público, Uber
+  custoVidaEssencial?: number;        // Soma calculada dos 4 custos acima
   reservaExistente?: number;          // Valor já acumulado em reserva de emergência
   reservaMetaId?: string;             // ID da Meta que representa a Reserva
-  mesesReservaIdeal?: number;         // 0=desativada, 3=arrojado, 6=equilibrado, 12=conservador
+  mesesReservaIdeal?: number;         // 0=desativada, 3=acelerado, 6=equilibrado, 12=conservador
 }
 
 interface AuthContextValue {
