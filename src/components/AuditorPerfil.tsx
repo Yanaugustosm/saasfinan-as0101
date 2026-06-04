@@ -18,8 +18,9 @@ import type { NivelEconomia } from "@/contexts/DataContext";
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 interface AuditorPerfilProps {
-  isOpen:  boolean;
-  onClose: () => void;
+  isOpen:      boolean;
+  onClose:     () => void;
+  isMandatory?: boolean; // true = onboarding obrigatório: sem X, sem fechar pelo fundo
 }
 
 // ─── Helpers visuais ─────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ const NIVEIS: { value: NivelEconomia; emoji: string; label: string; desc: string
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-export function AuditorPerfil({ isOpen, onClose }: AuditorPerfilProps) {
+export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorPerfilProps) {
   const { group, updateGroup } = useAuth();
   const { transacoes, metas }  = useData();
 
@@ -110,7 +111,10 @@ export function AuditorPerfil({ isOpen, onClose }: AuditorPerfilProps) {
   const modal = (
     <div
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center sm:p-6 bg-black/75 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        // Onboarding obrigatório: não fecha ao clicar fora
+        if (!isMandatory && e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         className="relative w-full max-w-[480px] rounded-t-[28px] sm:rounded-[24px] border shadow-2xl max-h-[92dvh] overflow-y-auto"
@@ -125,15 +129,24 @@ export function AuditorPerfil({ isOpen, onClose }: AuditorPerfilProps) {
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[18px]">🧠</span>
-              <h2 className="font-serif text-[20px] font-normal text-white/90">Auditor de Perfil</h2>
+              <span className="text-[18px]">{isMandatory ? "✨" : "🧠"}</span>
+              <h2 className="font-serif text-[20px] font-normal text-white/90">
+                {isMandatory ? "Bem-vindo ao Sincronia" : "Auditor de Perfil"}
+              </h2>
             </div>
-            <p className="text-[12px] text-white/35">Configura o Consultor para o seu casal</p>
+            <p className="text-[12px] text-white/35">
+              {isMandatory
+                ? "Vamos calibrar a inteligência do sistema para a realidade de vocês."
+                : "Configura o Consultor para o seu casal"}
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            className="size-8 rounded-full flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition text-[18px]"
-          >✕</button>
+          {/* Botão de fechar: escondido no onboarding obrigatório */}
+          {!isMandatory && (
+            <button
+              onClick={onClose}
+              className="size-8 rounded-full flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.06] transition text-[18px]"
+            >✕</button>
+          )}
         </div>
 
         {/* Indicador de etapas */}

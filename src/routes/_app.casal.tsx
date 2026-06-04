@@ -198,25 +198,19 @@ function CasalPage() {
             <div>
               <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Consultor Inteligente</div>
               <p className="mt-1.5 text-[15px] text-foreground">
-                {group?.nivelEconomia
-                  ? <>Nível: <span className="capitalize text-champagne font-medium">{group.nivelEconomia}</span></>
-                  : "Perfil financeiro não configurado"}
+                Nível: <span className="capitalize text-champagne font-medium">{group?.nivelEconomia ?? "—"}</span>
               </p>
               {group?.custoVidaEssencial ? (
                 <p className="text-[12.5px] text-muted-foreground mt-1">
                   Custo essencial estimado: <strong className="text-white/60">R$ {group.custoVidaEssencial.toLocaleString("pt-BR")}/mês</strong>
                 </p>
-              ) : (
-                <p className="text-[12.5px] text-muted-foreground mt-1">
-                  Configure para ativar os alertas comportamentais do Consultor.
-                </p>
-              )}
+              ) : null}
             </div>
             <button
               onClick={() => setShowAuditor(true)}
               className="h-10 px-4 rounded-full border border-champagne/30 text-[13px] text-champagne hover:bg-champagne/10 transition"
             >
-              {group?.nivelEconomia ? "⚙️ Editar" : "🧠 Configurar"}
+              ⚙️ Editar Perfil
             </button>
           </div>
         </div>
