@@ -26,25 +26,29 @@ interface AuditorPerfilProps {
 interface StreamingDef {
   id:            string;
   nome:          string;
-  logo:          string; // URL via Clearbit (confiável, sem autenticação)
+  logo:          string;
   precoSugerido: number;
-  emoji:         string; // fallback se logo falhar
 }
 
+// CDN: Simple Icons (SVGs vetoriais oficiais com cores de marca, open-source, sem bloqueio)
+const SI = (slug: string, color: string) =>
+  `https://cdn.simpleicons.org/${slug}/${color}`;
+
 const STREAMINGS: StreamingDef[] = [
-  { id: "netflix",     nome: "Netflix",      logo: "https://logo.clearbit.com/netflix.com",           precoSugerido: 39.90,  emoji: "🎬" },
-  { id: "spotify",     nome: "Spotify",      logo: "https://logo.clearbit.com/spotify.com",           precoSugerido: 21.90,  emoji: "🎵" },
-  { id: "prime",       nome: "Prime Video",  logo: "https://logo.clearbit.com/primevideo.com",        precoSugerido: 19.90,  emoji: "📦" },
-  { id: "disney",      nome: "Disney+",      logo: "https://logo.clearbit.com/disneyplus.com",        precoSugerido: 43.90,  emoji: "✨" },
-  { id: "max",         nome: "Max",          logo: "https://logo.clearbit.com/max.com",               precoSugerido: 34.90,  emoji: "📺" },
-  { id: "youtube",     nome: "YouTube",      logo: "https://logo.clearbit.com/youtube.com",           precoSugerido: 27.90,  emoji: "▶️" },
-  { id: "globoplay",   nome: "Globoplay",    logo: "https://logo.clearbit.com/globo.com",             precoSugerido: 24.90,  emoji: "🌐" },
-  { id: "paramount",   nome: "Paramount+",   logo: "https://logo.clearbit.com/paramountplus.com",     precoSugerido: 19.90,  emoji: "⭐" },
-  { id: "apple",       nome: "Apple TV+",    logo: "https://logo.clearbit.com/apple.com",             precoSugerido: 21.90,  emoji: "🍎" },
-  { id: "crunchyroll", nome: "Crunchyroll",  logo: "https://logo.clearbit.com/crunchyroll.com",       precoSugerido: 19.90,  emoji: "⛩️" },
-  { id: "deezer",      nome: "Deezer",       logo: "https://logo.clearbit.com/deezer.com",            precoSugerido: 21.90,  emoji: "🎶" },
-  { id: "internet",    nome: "Internet",     logo: "https://logo.clearbit.com/claro.com.br",          precoSugerido: 120.00, emoji: "📡" },
+  { id: "netflix",     nome: "Netflix",      logo: SI("netflix",       "E50914"), precoSugerido: 39.90  },
+  { id: "spotify",     nome: "Spotify",      logo: SI("spotify",       "1ED760"), precoSugerido: 21.90  },
+  { id: "prime",       nome: "Prime Video",  logo: SI("amazonprime",   "00A8E1"), precoSugerido: 19.90  },
+  { id: "disney",      nome: "Disney+",      logo: SI("disneyplus",    "0063E5"), precoSugerido: 43.90  },
+  { id: "max",         nome: "Max",          logo: SI("hbomax",        "A020F0"), precoSugerido: 34.90  },
+  { id: "youtube",     nome: "YouTube",      logo: SI("youtube",       "FF0000"), precoSugerido: 27.90  },
+  { id: "globoplay",   nome: "Globoplay",    logo: SI("globo",         "FF5300"), precoSugerido: 24.90  },
+  { id: "paramount",   nome: "Paramount+",   logo: SI("paramount",     "0064FF"), precoSugerido: 19.90  },
+  { id: "apple",       nome: "Apple TV+",    logo: SI("appletv",       "ffffff"), precoSugerido: 21.90  },
+  { id: "crunchyroll", nome: "Crunchyroll",  logo: SI("crunchyroll",   "F47521"), precoSugerido: 19.90  },
+  { id: "deezer",      nome: "Deezer",       logo: SI("deezer",        "EF5466"), precoSugerido: 21.90  },
+  { id: "internet",    nome: "Internet",     logo: SI("speedtest",     "141526"), precoSugerido: 120.00 },
 ];
+
 
 // ─── Constantes visuais ──────────────────────────────────────────────────────
 
@@ -337,45 +341,46 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 <div className={labelCls}>🎬 Streamings & Assinaturas</div>
                 <p className="text-[11.5px] text-white/35 mb-3">Selecione os serviços que vocês assinam. O sistema calcula o total automaticamente.</p>
 
-                {/* Chips retangulares horizontais */}
-                <div className="flex flex-wrap gap-2 mb-3">
+                {/* Chips retangulares horizontais — compactos e elegantes */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {STREAMINGS.map((s) => {
                     const sel = streamingsSel[s.id] !== undefined;
                     return (
                       <button
                         key={s.id}
                         onClick={() => toggleStreaming(s)}
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200"
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all duration-200"
                         style={sel
-                          ? { background: `${accent}14`, borderColor: `${accent}50`, boxShadow: `0 0 0 1px ${accent}30` }
+                          ? { background: `${accent}14`, borderColor: `${accent}50`, boxShadow: `0 0 0 1px ${accent}25` }
                           : { background: "oklch(1 0 0 / 0.04)", borderColor: "oklch(1 0 0 / 0.09)" }
                         }
                       >
-                        {/* Ícone oficial pequeno com fallback elegante */}
-                        <span className="relative flex-shrink-0 w-[18px] h-[18px]">
-                          <img
-                            src={s.logo}
-                            alt={s.nome}
-                            className="w-[18px] h-[18px] rounded-[4px] object-contain"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                              const fb = e.currentTarget.nextElementSibling as HTMLElement;
-                              if (fb) fb.style.display = "flex";
-                            }}
-                          />
-                          {/* Fallback: inicial do serviço em círculo colorido */}
-                          <span
-                            className="hidden w-[18px] h-[18px] rounded-[4px] items-center justify-center text-[9px] font-bold"
-                            style={{ background: sel ? `${accent}30` : "oklch(1 0 0 / 0.12)", color: sel ? accent : "oklch(1 0 0 / 0.50)" }}
-                          >
-                            {s.nome[0]}
-                          </span>
+                        {/* Ícone SVG oficial 14px */}
+                        <img
+                          src={s.logo}
+                          alt={s.nome}
+                          width={14}
+                          height={14}
+                          className="flex-shrink-0 object-contain"
+                          style={{ filter: s.id === "apple" ? "invert(0.6)" : undefined }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                            if (fb) fb.style.display = "inline";
+                          }}
+                        />
+                        {/* Fallback: inicial em fonte monospace — sem emoji */}
+                        <span
+                          className="hidden text-[9px] font-bold flex-shrink-0 w-[14px] text-center leading-none"
+                          style={{ color: sel ? accent : "oklch(1 0 0 / 0.40)" }}
+                        >
+                          {s.nome[0]}
                         </span>
 
                         {/* Nome */}
                         <span
-                          className="text-[12.5px] font-medium whitespace-nowrap transition-colors"
-                          style={{ color: sel ? accent : "oklch(1 0 0 / 0.60)" }}
+                          className="text-[11.5px] font-medium whitespace-nowrap"
+                          style={{ color: sel ? accent : "oklch(1 0 0 / 0.55)" }}
                         >
                           {s.nome}
                         </span>
