@@ -337,43 +337,48 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 <div className={labelCls}>🎬 Streamings & Assinaturas</div>
                 <p className="text-[11.5px] text-white/35 mb-3">Selecione os serviços que vocês assinam. O sistema calcula o total automaticamente.</p>
 
-                {/* Grid de logos */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                {/* Chips retangulares horizontais */}
+                <div className="flex flex-wrap gap-2 mb-3">
                   {STREAMINGS.map((s) => {
                     const sel = streamingsSel[s.id] !== undefined;
                     return (
                       <button
                         key={s.id}
                         onClick={() => toggleStreaming(s)}
-                        className="relative flex flex-col items-center gap-1.5 px-2 py-3 rounded-2xl border transition-all"
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200"
                         style={sel
-                          ? { background: `${accent}12`, borderColor: `${accent}40` }
-                          : { background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.07)" }
+                          ? { background: `${accent}14`, borderColor: `${accent}50`, boxShadow: `0 0 0 1px ${accent}30` }
+                          : { background: "oklch(1 0 0 / 0.04)", borderColor: "oklch(1 0 0 / 0.09)" }
                         }
                       >
-                        {/* Logo oficial com fallback para emoji */}
-                        <img
-                          src={s.logo}
-                          alt={s.nome}
-                          className="w-8 h-8 rounded-lg object-contain"
-                          onError={(e) => {
-                            const t = e.currentTarget;
-                            t.style.display = "none";
-                            const fb = t.nextElementSibling as HTMLElement;
-                            if (fb) fb.style.display = "flex";
-                          }}
-                        />
-                        <span className="hidden text-[22px] items-center justify-center w-8 h-8">{s.emoji}</span>
-
-                        <span className="text-[10.5px] text-white/60 font-medium text-center leading-tight">{s.nome}</span>
-
-                        {/* Check badge */}
-                        {sel && (
+                        {/* Ícone oficial pequeno com fallback elegante */}
+                        <span className="relative flex-shrink-0 w-[18px] h-[18px]">
+                          <img
+                            src={s.logo}
+                            alt={s.nome}
+                            className="w-[18px] h-[18px] rounded-[4px] object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (fb) fb.style.display = "flex";
+                            }}
+                          />
+                          {/* Fallback: inicial do serviço em círculo colorido */}
                           <span
-                            className="absolute top-1.5 right-1.5 size-3.5 rounded-full flex items-center justify-center text-[8px]"
-                            style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
-                          >✓</span>
-                        )}
+                            className="hidden w-[18px] h-[18px] rounded-[4px] items-center justify-center text-[9px] font-bold"
+                            style={{ background: sel ? `${accent}30` : "oklch(1 0 0 / 0.12)", color: sel ? accent : "oklch(1 0 0 / 0.50)" }}
+                          >
+                            {s.nome[0]}
+                          </span>
+                        </span>
+
+                        {/* Nome */}
+                        <span
+                          className="text-[12.5px] font-medium whitespace-nowrap transition-colors"
+                          style={{ color: sel ? accent : "oklch(1 0 0 / 0.60)" }}
+                        >
+                          {s.nome}
+                        </span>
                       </button>
                     );
                   })}
