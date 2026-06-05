@@ -600,142 +600,181 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
           {step === 2 && (
             <div className="space-y-4 animate-fade-up">
 
-              {/* Header contextual */}
+              {/* Header */}
               <div>
-                <div className={labelCls}>Quantos meses de reserva querem ter?</div>
-                <p className="text-[11.5px] text-white/35 mb-3">
-                  Calculamos o alvo e o tempo estimado com base nos gastos e folga de vocês.
+                <div className={labelCls}>Reserva de Emerg\u00eancia</div>
+                <p className="text-[12px] text-white/40 mt-1 leading-relaxed">
+                  Sua prote\u00e7\u00e3o financeira caso a vida surpreenda. Calculamos os valores com base na realidade de voc\u00eas.
                 </p>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    { meses: 0,  emoji: "🛑", label: "Desativar",              desc: "Foco 100% em metas. Consultor não cobrará reserva." },
-                    { meses: 3,  emoji: "🚀", label: "3 meses — Acelerado",   desc: "Risco moderado. Libera caixa rápido para os sonhos." },
-                    { meses: 6,  emoji: "⚖️",  label: "6 meses — Equilibrado", desc: "Padrão de mercado. Segurança sem sacrificar metas." },
-                    { meses: 12, emoji: "🛡️", label: "12 meses — Conservador", desc: "Máxima proteção. Ideal para autônomos e empreendedores." },
-                  ] as const).map((op) => {
-                    const sel     = mesesReserva === op.meses;
-                    const isRec   = op.meses === recomendacaoMeses;
-                    const alvoOp  = custoTotalFixo * op.meses;
-                    const tempo   = op.meses > 0 ? calcTempoReserva(alvoOp, folgaMensal) : null;
-
-                    return (
-                      <button
-                        key={op.meses}
-                        onClick={() => setMesesReserva(op.meses)}
-                        className="text-left px-3 py-3 rounded-2xl border transition-all relative"
-                        style={sel
-                          ? { background: `${accent}14`, borderColor: `${accent}60`, boxShadow: `0 0 0 1px ${accent}30` }
-                          : isRec
-                          ? { background: "oklch(1 0 0 / 0.04)", borderColor: `${accent}30` }
-                          : { background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.07)" }
-                        }
-                      >
-                        {/* Selo de recomendação */}
-                        {isRec && (
-                          <div
-                            className="absolute -top-2 left-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide"
-                            style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
-                          >
-                            ✨ Consultor Recomenda
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[18px]">{op.emoji}</span>
-                          <span className="text-[12px] font-medium text-white/80">{op.label}</span>
-                          {sel && <span className="ml-auto size-4 rounded-full flex items-center justify-center text-[10px]" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>✓</span>}
-                        </div>
-
-                        <p className="text-[10.5px] text-white/35 leading-relaxed">{op.desc}</p>
-
-                        {/* Alvo financeiro + tempo estimado (Motor 1) */}
-                        {op.meses > 0 && custoTotalFixo > 0 && (
-                          <div className="mt-2 space-y-0.5">
-                            <p className="text-[11px] font-semibold" style={{ color: sel ? accent : "oklch(1 0 0 / 0.42)" }}>
-                              🎯 Alvo: {fmt(alvoOp)}
-                            </p>
-                            {tempo && folgaMensal > 0 && (
-                              <p className="text-[10.5px]" style={{ color: sel ? `${accent}CC` : "oklch(1 0 0 / 0.30)" }}>
-                                ⏳ Levaria ~{tempo} (50% da folga)
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
-              {/* Painel de Custo de Oportunidade (Motor 3) */}
+              {/* Op\u00e7\u00f5es \u2014 lista vertical espa\u00e7osa */}
+              <div className="flex flex-col gap-3">
+                {([
+                  { meses: 0,  emoji: "\ud83d\uded1", label: "Desativar reserva",       desc: "Foco 100% nas metas. O Consultor n\u00e3o cobrar\u00e1 reserva de emerg\u00eancia.",                                     tag: null },
+                  { meses: 3,  emoji: "\ud83d\ude80", label: "3 meses \u2014 Acelerado",    desc: "Prote\u00e7\u00e3o b\u00e1sica para quem tem renda est\u00e1vel. Libera caixa mais r\u00e1pido para os sonhos.",               tag: "Menor esfor\u00e7o" },
+                  { meses: 6,  emoji: "\u2696\ufe0f",  label: "6 meses \u2014 Equilibrado",  desc: "Padr\u00e3o recomendado pelo mercado financeiro. Seguran\u00e7a real sem sacrificar as metas.",                  tag: "Mais popular" },
+                  { meses: 12, emoji: "\ud83d\udee1\ufe0f", label: "12 meses \u2014 Conservador", desc: "M\u00e1xima prote\u00e7\u00e3o. Ideal para aut\u00f4nomos, empreendedores ou quem tem renda vari\u00e1vel.", tag: "M\u00e1xima prote\u00e7\u00e3o" },
+                ] as const).map((op) => {
+                  const sel    = mesesReserva === op.meses;
+                  const isRec  = op.meses === recomendacaoMeses;
+                  const alvoOp = custoTotalFixo * op.meses;
+                  const tempo  = op.meses > 0 ? calcTempoReserva(alvoOp, folgaMensal) : null;
+
+                  return (
+                    <button
+                      key={op.meses}
+                      onClick={() => setMesesReserva(op.meses)}
+                      className="w-full text-left rounded-2xl border transition-all overflow-hidden"
+                      style={sel
+                        ? { background: `${accent}12`, borderColor: `${accent}55`, boxShadow: `0 0 0 1px ${accent}25` }
+                        : isRec
+                        ? { background: "oklch(1 0 0 / 0.035)", borderColor: `${accent}28` }
+                        : { background: "oklch(1 0 0 / 0.025)", borderColor: "oklch(1 0 0 / 0.07)" }
+                      }
+                    >
+                      {/* Zona Superior: Conceito */}
+                      <div className="px-4 pt-4 pb-3 flex items-start gap-3">
+                        <span className="text-[26px] leading-none mt-0.5 flex-shrink-0">{op.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-[14px] font-semibold text-white/90 leading-tight">{op.label}</span>
+                            <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                              {isRec && (
+                                <span
+                                  className="text-[8.5px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"
+                                  style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
+                                >
+                                  \u2728 Consultor
+                                </span>
+                              )}
+                              {op.tag && !isRec && (
+                                <span className="text-[8.5px] uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: "oklch(1 0 0 / 0.07)", color: "oklch(1 0 0 / 0.35)" }}>
+                                  {op.tag}
+                                </span>
+                              )}
+                              {sel && (
+                                <span className="size-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>
+                                  \u2713
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[11.5px] text-white/40 mt-1.5 leading-relaxed">{op.desc}</p>
+                        </div>
+                      </div>
+
+                      {/* Zona Inferior: Mini-Dashboard Financeiro */}
+                      {op.meses > 0 && custoTotalFixo > 0 && (
+                        <div
+                          className="mx-3 mb-3 rounded-xl px-4 py-3 grid grid-cols-2 gap-3"
+                          style={{
+                            background: sel ? `${accent}0E` : "oklch(0 0 0 / 0.18)",
+                            border: `1px solid ${sel ? accent + "22" : "oklch(1 0 0 / 0.06)"}`,
+                          }}
+                        >
+                          <div>
+                            <p className="text-[9px] uppercase tracking-[0.14em] text-white/28 mb-1.5">\ud83c\udfaf Alvo total</p>
+                            <p className="text-[16px] font-bold leading-none" style={{ color: sel ? accent : "oklch(1 0 0 / 0.62)" }}>
+                              {fmt(alvoOp)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase tracking-[0.14em] text-white/28 mb-1.5">\u23f3 Tempo estimado</p>
+                            <p className="text-[13.5px] font-semibold leading-tight" style={{ color: sel ? `${accent}CC` : "oklch(1 0 0 / 0.42)" }}>
+                              {folgaMensal > 0 ? `~${tempo}` : "Sem margem"}
+                            </p>
+                            {folgaMensal > 0 && (
+                              <p className="text-[9px] text-white/22 mt-0.5">guardando 50% da folga</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Painel de Custo de Oportunidade */}
               {mesesReserva !== null && (
                 <div
                   className="rounded-2xl p-4 border"
                   style={mesesReserva === 12
-                    ? { background: "oklch(0.16 0.02 60 / 0.20)", borderColor: "oklch(0.72 0.10 60 / 0.25)" }
+                    ? { background: "oklch(0.16 0.02 30 / 0.25)", borderColor: "oklch(0.72 0.12 40 / 0.35)" }
                     : mesesReserva === 0
-                    ? { background: "oklch(0.16 0.02 240 / 0.15)", borderColor: "oklch(1 0 0 / 0.10)" }
-                    : { background: `${accent}09`, borderColor: `${accent}25` }
+                    ? { background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.08)" }
+                    : { background: `${accent}09`, borderColor: `${accent}28` }
                   }
                 >
                   {mesesReserva === 0 && (
-                    <p className="text-[12.5px] text-white/55 leading-relaxed">
-                      💡 <strong className="text-white/70">O Consultor entende.</strong> Sem cobranças sobre reserva. O foco será 100% nos gastos e nas metas de vocês.
+                    <p className="text-[12.5px] text-white/50 leading-relaxed">
+                      \ud83d\udca1 <strong className="text-white/70">O Consultor entende.</strong> Sem cobran\u00e7as sobre reserva. Foco total nos gastos e metas de voc\u00eas.
                     </p>
                   )}
                   {mesesReserva === 3 && (
-                    <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}DD` }}>
-                      ✅ <strong>Boa escolha para quem quer acelerar.</strong> Com 3 meses de proteção, vocês já liberam o restante da folga para as metas. O risco é controlado, especialmente com {dinamica === "dois_provedores" ? "duas fontes de renda" : "disciplina financeira sólida"}.
+                    <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}E0` }}>
+                      \u2705 <strong>Boa escolha para quem quer acelerar.</strong> Com 3 meses de prote\u00e7\u00e3o, voc\u00eas j\u00e1 liberam o restante da folga para os sonhos. Risco controlado, especialmente com {dinamica === "dois_provedores" ? "duas fontes de renda" : "disciplina financeira s\u00f3lida"}.
                     </p>
                   )}
                   {mesesReserva === 6 && (
-                    <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}DD` }}>
-                      ⚖️ <strong>O ponto de equilíbrio ideal.</strong> 6 meses é o padrão recomendado por consultorias financeiras no Brasil. Vocês ficam protegidos sem sacrificar os sonhos por tempo demais.
+                    <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}E0` }}>
+                      \u2696\ufe0f <strong>O ponto de equil\u00edbrio ideal.</strong> 6 meses \u00e9 o padr\u00e3o das principais consultorias financeiras do Brasil. Voc\u00eas ficam protegidos sem travar os sonhos por tempo demais.
                     </p>
                   )}
                   {mesesReserva === 12 && (
                     <div className="space-y-2">
                       <p className="text-[12.5px] text-white/65 leading-relaxed">
-                        ⚠️ <strong className="text-white/80">Cuidado com o custo de oportunidade.</strong> 12 meses dá segurança máxima, mas com a folga atual de vocês isso levaria aproximadamente <strong className="text-white/80">~{calcTempoReserva(custoTotalFixo * 12, folgaMensal)}</strong> — tempo em que as metas ficariam em espera.
+                        \u26a0\ufe0f <strong className="text-white/85">Cuidado com o custo de oportunidade.</strong> 12 meses d\u00e1 seguran\u00e7a m\u00e1xima, mas com a folga atual levaria <strong className="text-white/80">~{calcTempoReserva(custoTotalFixo * 12, folgaMensal)}</strong> para completar \u2014 per\u00edodo em que as metas ficam em espera.
                       </p>
                       {folgaMensal <= 0 && (
-                        <p className="text-[11px] text-white/40">Com renda e custos equilibrados, revisar os gastos fixos primeiro pode ser o caminho mais inteligente.</p>
+                        <p className="text-[11px] text-white/35">Revisar os gastos fixos primeiro pode ser o caminho mais inteligente.</p>
                       )}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Input de reserva atual */}
+              {/* Input: quanto j\u00e1 t\u00eam guardado */}
               {mesesReserva !== null && mesesReserva > 0 && (
-                <div>
-                  <div className={labelCls}>Quanto vocês já têm guardado?</div>
+                <div className="space-y-2">
+                  <div className={labelCls}>Quanto voc\u00eas j\u00e1 t\u00eam guardado?</div>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
                     <input type="text" inputMode="numeric" value={reserva} onChange={(e) => setReserva(maskBRL(e.target.value))} placeholder="Ex: 10.000" className={inputCls} />
                   </div>
                   {reservaNum > 0 && (
-                    <p className="text-[11px] text-white/35 mt-1.5">
-                      {reservaNum >= custoTotalFixo * mesesReserva
-                        ? "✅ Reserva completa! Vocês já estão protegidos."
-                        : `Faltam ${fmt(Math.max(0, custoTotalFixo * mesesReserva - reservaNum))} para completar — ~${calcTempoReserva(Math.max(0, custoTotalFixo * mesesReserva - reservaNum), folgaMensal)} (50% da folga).`}
-                    </p>
+                    <div
+                      className="rounded-xl px-4 py-3 border"
+                      style={reservaNum >= custoTotalFixo * mesesReserva
+                        ? { background: "oklch(0.22 0.06 145 / 0.25)", borderColor: "oklch(0.65 0.15 145 / 0.35)" }
+                        : { background: `${accent}08`, borderColor: `${accent}20` }
+                      }
+                    >
+                      {reservaNum >= custoTotalFixo * mesesReserva ? (
+                        <p className="text-[12px] text-green-400/80">\u2705 Reserva completa! Voc\u00eas j\u00e1 est\u00e3o protegidos.</p>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4 flex-wrap">
+                          <p className="text-[12px] text-white/50">Faltam <strong className="text-white/70">{fmt(Math.max(0, custoTotalFixo * mesesReserva - reservaNum))}</strong></p>
+                          <p className="text-[11px]" style={{ color: accent }}>~{calcTempoReserva(Math.max(0, custoTotalFixo * mesesReserva - reservaNum), folgaMensal)}</p>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => setStep(1)} className="h-12 px-5 rounded-2xl border border-white/[0.10] text-[14px] text-white/45 hover:text-white/70 hover:bg-white/[0.04] transition">← Voltar</button>
+                <button onClick={() => setStep(1)} className="h-12 px-5 rounded-2xl border border-white/[0.10] text-[14px] text-white/45 hover:text-white/70 hover:bg-white/[0.04] transition">\u2190 Voltar</button>
                 <button
                   onClick={() => setStep(3)}
                   disabled={mesesReserva === null}
                   className="flex-1 h-12 rounded-2xl text-[14px] font-semibold transition-all active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{ background: "oklch(0.96 0.012 80)", color: "oklch(0.12 0.01 240)" }}
-                >Continuar →</button>
+                >Continuar \u2192</button>
               </div>
             </div>
           )}
+
 
           {/* ══════════════════════════════════════════════════════════════════
               STEP 3: VEREDITO DO CONSULTOR
