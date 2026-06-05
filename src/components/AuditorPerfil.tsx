@@ -74,7 +74,6 @@ const maskBRL = (raw: string | number): string => {
 
   let digits: string;
   if (typeof raw === "number") {
-    // Número puro do Firebase (ex: 20000) → converte para centavos como string
     digits = (raw * 100).toFixed(0);
   } else {
     digits = String(raw).replace(/\D/g, "");
@@ -90,11 +89,26 @@ const maskBRL = (raw: string | number): string => {
   return `${intFormatted},${decPart}`;
 };
 
-/** Converte "20.000,00" de volta para o número 20000 (para a matemática do Consultor) */
+/** Converte "20.000,00" de volta para o número 20000 */
 const unmaskBRL = (masked: string): number => {
   if (!masked) return 0;
   const digits = masked.replace(/\D/g, "");
   return parseInt(digits, 10) / 100 || 0;
+};
+
+// ─── Motor Preditivo de Reserva ────────────────────────────────────────────────────────
+/** Calcula o tempo estimado para montar a reserva usando 50% da folga mensal */
+const calcTempoReserva = (alvo: number, folgaMensal: number): string => {
+  if (folgaMensal <= 0 || alvo <= 0) return "sem margem disponível";
+  const economiasMes = folgaMensal * 0.5;
+  const meses = Math.ceil(alvo / economiasMes);
+  if (meses <= 1) return "menos de 1 mês";
+  if (meses < 12) return `${meses} meses`;
+  const anos = Math.floor(meses / 12);
+  const resto = meses % 12;
+  const strAnos = `${anos} ${anos === 1 ? "ano" : "anos"}`;
+  if (resto === 0) return strAnos;
+  return `${strAnos} e ${resto} ${resto === 1 ? "mês" : "meses"}`;
 };
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -181,7 +195,12 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
     }
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Diagnóstico clínico
+  // ── Recomendação de risco (Motor 2) ────────────────────────────────────────
+  // Um único provedor = risco alto = recomenda 6 meses de segurança
+  // Dois provedores = risco diluido = recomenda 3 meses para liberar caixa
+  const recomendacaoMeses = dinamica === "um_provedor" ? 6 : 3;
+
+  // Veredito clínico
   const veredito = useMemo(() => {
     if (rendaNum <= 0) return "";
     const pct = Math.round(pctComprometida);
@@ -580,37 +599,68 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
           ══════════════════════════════════════════════════════════════════ */}
           {step === 2 && (
             <div className="space-y-4 animate-fade-up">
+
+              {/* Header contextual */}
               <div>
                 <div className={labelCls}>Quantos meses de reserva querem ter?</div>
+                <p className="text-[11.5px] text-white/35 mb-3">
+                  Calculamos o alvo e o tempo estimado com base nos gastos e folga de vocês.
+                </p>
+
                 <div className="grid grid-cols-2 gap-2">
                   {([
-                    { meses: 0,  emoji: "🛑", label: "Desativar",            desc: "Não queremos focar em reserva agora. Consultor foca nas metas." },
-                    { meses: 3,  emoji: "🚀", label: "3 meses — Acelerado",  desc: "Ideal para renda estável. Libera caixa para os sonhos." },
-                    { meses: 6,  emoji: "⚖️", label: "6 meses — Equilibrado",desc: "Recomendação padrão. Segurança e liberdade para as metas." },
-                    { meses: 12, emoji: "🛡️", label: "12 meses — Conservador",desc: "Máxima segurança. Ideal para autônomos e empreendedores." },
+                    { meses: 0,  emoji: "🛑", label: "Desativar",              desc: "Foco 100% em metas. Consultor não cobrará reserva." },
+                    { meses: 3,  emoji: "🚀", label: "3 meses — Acelerado",   desc: "Risco moderado. Libera caixa rápido para os sonhos." },
+                    { meses: 6,  emoji: "⚖️",  label: "6 meses — Equilibrado", desc: "Padrão de mercado. Segurança sem sacrificar metas." },
+                    { meses: 12, emoji: "🛡️", label: "12 meses — Conservador", desc: "Máxima proteção. Ideal para autônomos e empreendedores." },
                   ] as const).map((op) => {
-                    const sel = mesesReserva === op.meses;
+                    const sel     = mesesReserva === op.meses;
+                    const isRec   = op.meses === recomendacaoMeses;
+                    const alvoOp  = custoTotalFixo * op.meses;
+                    const tempo   = op.meses > 0 ? calcTempoReserva(alvoOp, folgaMensal) : null;
+
                     return (
                       <button
                         key={op.meses}
                         onClick={() => setMesesReserva(op.meses)}
-                        className="text-left px-3 py-3 rounded-2xl border transition-all"
+                        className="text-left px-3 py-3 rounded-2xl border transition-all relative"
                         style={sel
-                          ? { background: `${accent}12`, borderColor: `${accent}40` }
+                          ? { background: `${accent}14`, borderColor: `${accent}60`, boxShadow: `0 0 0 1px ${accent}30` }
+                          : isRec
+                          ? { background: "oklch(1 0 0 / 0.04)", borderColor: `${accent}30` }
                           : { background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.07)" }
                         }
                       >
+                        {/* Selo de recomendação */}
+                        {isRec && (
+                          <div
+                            className="absolute -top-2 left-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide"
+                            style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
+                          >
+                            ✨ Consultor Recomenda
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-[18px]">{op.emoji}</span>
                           <span className="text-[12px] font-medium text-white/80">{op.label}</span>
                           {sel && <span className="ml-auto size-4 rounded-full flex items-center justify-center text-[10px]" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>✓</span>}
                         </div>
-                        <p className="text-[11px] text-white/35 leading-relaxed">{op.desc}</p>
-                        {/* Alvo financeiro dinâmico — calculado com os gastos reais do casal */}
+
+                        <p className="text-[10.5px] text-white/35 leading-relaxed">{op.desc}</p>
+
+                        {/* Alvo financeiro + tempo estimado (Motor 1) */}
                         {op.meses > 0 && custoTotalFixo > 0 && (
-                          <p className="text-[11px] font-semibold mt-1.5" style={{ color: sel ? accent : "oklch(1 0 0 / 0.40)" }}>
-                            🎯 Alvo: {fmt(custoTotalFixo * op.meses)}
-                          </p>
+                          <div className="mt-2 space-y-0.5">
+                            <p className="text-[11px] font-semibold" style={{ color: sel ? accent : "oklch(1 0 0 / 0.42)" }}>
+                              🎯 Alvo: {fmt(alvoOp)}
+                            </p>
+                            {tempo && folgaMensal > 0 && (
+                              <p className="text-[10.5px]" style={{ color: sel ? `${accent}CC` : "oklch(1 0 0 / 0.30)" }}>
+                                ⏳ Levaria ~{tempo} (50% da folga)
+                              </p>
+                            )}
+                          </div>
                         )}
                       </button>
                     );
@@ -618,16 +668,48 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 </div>
               </div>
 
+              {/* Painel de Custo de Oportunidade (Motor 3) */}
+              {mesesReserva !== null && (
+                <div
+                  className="rounded-2xl p-4 border"
+                  style={mesesReserva === 12
+                    ? { background: "oklch(0.16 0.02 60 / 0.20)", borderColor: "oklch(0.72 0.10 60 / 0.25)" }
+                    : mesesReserva === 0
+                    ? { background: "oklch(0.16 0.02 240 / 0.15)", borderColor: "oklch(1 0 0 / 0.10)" }
+                    : { background: `${accent}09`, borderColor: `${accent}25` }
+                  }
+                >
+                  {mesesReserva === 0 && (
+                    <p className="text-[12.5px] text-white/55 leading-relaxed">
+                      💡 <strong className="text-white/70">O Consultor entende.</strong> Sem cobranças sobre reserva. O foco será 100% nos gastos e nas metas de vocês.
+                    </p>
+                  )}
+                  {mesesReserva === 3 && (
+                    <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}DD` }}>
+                      ✅ <strong>Boa escolha para quem quer acelerar.</strong> Com 3 meses de proteção, vocês já liberam o restante da folga para as metas. O risco é controlado, especialmente com {dinamica === "dois_provedores" ? "duas fontes de renda" : "disciplina financeira sólida"}.
+                    </p>
+                  )}
+                  {mesesReserva === 6 && (
+                    <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}DD` }}>
+                      ⚖️ <strong>O ponto de equilíbrio ideal.</strong> 6 meses é o padrão recomendado por consultorias financeiras no Brasil. Vocês ficam protegidos sem sacrificar os sonhos por tempo demais.
+                    </p>
+                  )}
+                  {mesesReserva === 12 && (
+                    <div className="space-y-2">
+                      <p className="text-[12.5px] text-white/65 leading-relaxed">
+                        ⚠️ <strong className="text-white/80">Cuidado com o custo de oportunidade.</strong> 12 meses dá segurança máxima, mas com a folga atual de vocês isso levaria aproximadamente <strong className="text-white/80">~{calcTempoReserva(custoTotalFixo * 12, folgaMensal)}</strong> — tempo em que as metas ficariam em espera.
+                      </p>
+                      {folgaMensal <= 0 && (
+                        <p className="text-[11px] text-white/40">Com renda e custos equilibrados, revisar os gastos fixos primeiro pode ser o caminho mais inteligente.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Input de reserva atual */}
               {mesesReserva !== null && mesesReserva > 0 && (
                 <div>
-                  <div className="rounded-2xl p-4 border mb-3" style={{ background: `${accent}08`, borderColor: `${accent}20` }}>
-                    <p className="text-[13px] text-white/60">
-                      Meta de vocês: <strong className="text-white/70">{mesesReserva} meses</strong> de custo essencial
-                    </p>
-                    <p className="text-[12px] mt-1" style={{ color: accent }}>
-                      Alvo: <strong>{fmt(custoTotalFixo * mesesReserva)}</strong>
-                    </p>
-                  </div>
                   <div className={labelCls}>Quanto vocês já têm guardado?</div>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
@@ -636,18 +718,10 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                   {reservaNum > 0 && (
                     <p className="text-[11px] text-white/35 mt-1.5">
                       {reservaNum >= custoTotalFixo * mesesReserva
-                        ? "✅ Reserva completa! Vocês estão protegidos."
-                        : `Faltam ${fmt(Math.max(0, custoTotalFixo * mesesReserva - reservaNum))} para completar.`}
+                        ? "✅ Reserva completa! Vocês já estão protegidos."
+                        : `Faltam ${fmt(Math.max(0, custoTotalFixo * mesesReserva - reservaNum))} para completar — ~${calcTempoReserva(Math.max(0, custoTotalFixo * mesesReserva - reservaNum), folgaMensal)} (50% da folga).`}
                     </p>
                   )}
-                </div>
-              )}
-
-              {mesesReserva !== null && mesesReserva === 0 && (
-                <div className="rounded-2xl p-4 border" style={{ background: "oklch(0.16 0.02 60 / 0.20)", borderColor: "oklch(0.72 0.10 60 / 0.25)" }}>
-                  <p className="text-[12.5px] text-white/55 leading-relaxed">
-                    💡 <strong className="text-white/70">O Consultor entende.</strong> Sem cobranças sobre reserva. Foco 100% em gastos e metas.
-                  </p>
                 </div>
               )}
 
