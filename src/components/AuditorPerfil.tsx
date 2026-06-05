@@ -582,6 +582,15 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 )}
               </div>
 
+              {/* Header da seção de seleção */}
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/[0.07]" />
+                <span className="text-[9.5px] uppercase tracking-[0.20em] text-white/25 font-medium whitespace-nowrap">
+                  Nível de Atuação do Consultor
+                </span>
+                <div className="h-px flex-1 bg-white/[0.07]" />
+              </div>
+
               {/* Seleção do nível — pré-marcado pela sugestão */}
               <div className="space-y-2">
                 {NIVEIS.map((n) => {
@@ -621,7 +630,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                                 className="text-[9px] uppercase tracking-[0.15em] px-1.5 py-0.5 rounded-full"
                                 style={{ background: `${displayAccent}20`, color: displayAccent }}
                               >
-                                {emCrise ? "Urgente" : "Recomendado"}
+                              {emCrise ? "Sugestão Urgente 🚨" : "Sugestão do Consultor ✨"}
                               </span>
                             )}
                           </div>
