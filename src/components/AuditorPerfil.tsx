@@ -132,7 +132,9 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
   });
 
   // Step 2
-  const [mesesReserva, setMesesReserva] = useState<number>(group?.mesesReservaIdeal ?? 6);
+  const [mesesReserva, setMesesReserva] = useState<number | null>(
+    group?.mesesReservaIdeal !== undefined ? group.mesesReservaIdeal : null
+  );
   const [reserva, setReserva] = useState(maskBRL(group?.reservaExistente ?? ""));
 
   // Step 3
@@ -166,7 +168,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
           custoTotalFixo,
           metas,
           reservaNum,
-          mesesReserva * custoTotalFixo  // reservaIdeal = meses * custo essencial
+          (mesesReserva ?? 0) * custoTotalFixo  // reservaIdeal = meses * custo essencial
         )
       : null,
     [rendaNum, custoTotalFixo, metas, reservaNum, mesesReserva]
@@ -231,7 +233,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
         custoTransporte:        Math.round(transporteNum * 100) / 100,
         custoVidaEssencial:     totalFixo,
         reservaExistente:       Math.round(reservaNum    * 100) / 100,
-        mesesReservaIdeal:      mesesReserva,
+        mesesReservaIdeal:      mesesReserva ?? 0,
         nivelEconomia:          nivel,
       });
       onClose();
@@ -604,13 +606,19 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                           {sel && <span className="ml-auto size-4 rounded-full flex items-center justify-center text-[10px]" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>✓</span>}
                         </div>
                         <p className="text-[11px] text-white/35 leading-relaxed">{op.desc}</p>
+                        {/* Alvo financeiro dinâmico — calculado com os gastos reais do casal */}
+                        {op.meses > 0 && custoTotalFixo > 0 && (
+                          <p className="text-[11px] font-semibold mt-1.5" style={{ color: sel ? accent : "oklch(1 0 0 / 0.40)" }}>
+                            🎯 Alvo: {fmt(custoTotalFixo * op.meses)}
+                          </p>
+                        )}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {mesesReserva > 0 && (
+              {mesesReserva !== null && mesesReserva > 0 && (
                 <div>
                   <div className="rounded-2xl p-4 border mb-3" style={{ background: `${accent}08`, borderColor: `${accent}20` }}>
                     <p className="text-[13px] text-white/60">
@@ -635,7 +643,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 </div>
               )}
 
-              {mesesReserva === 0 && (
+              {mesesReserva !== null && mesesReserva === 0 && (
                 <div className="rounded-2xl p-4 border" style={{ background: "oklch(0.16 0.02 60 / 0.20)", borderColor: "oklch(0.72 0.10 60 / 0.25)" }}>
                   <p className="text-[12.5px] text-white/55 leading-relaxed">
                     💡 <strong className="text-white/70">O Consultor entende.</strong> Sem cobranças sobre reserva. Foco 100% em gastos e metas.
@@ -645,7 +653,12 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
 
               <div className="flex gap-3">
                 <button onClick={() => setStep(1)} className="h-12 px-5 rounded-2xl border border-white/[0.10] text-[14px] text-white/45 hover:text-white/70 hover:bg-white/[0.04] transition">← Voltar</button>
-                <button onClick={() => setStep(3)} className="flex-1 h-12 rounded-2xl text-[14px] font-semibold transition-all active:scale-[0.98]" style={{ background: "oklch(0.96 0.012 80)", color: "oklch(0.12 0.01 240)" }}>Continuar →</button>
+                <button
+                  onClick={() => setStep(3)}
+                  disabled={mesesReserva === null}
+                  className="flex-1 h-12 rounded-2xl text-[14px] font-semibold transition-all active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ background: "oklch(0.96 0.012 80)", color: "oklch(0.12 0.01 240)" }}
+                >Continuar →</button>
               </div>
             </div>
           )}
