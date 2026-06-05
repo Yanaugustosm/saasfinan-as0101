@@ -585,36 +585,53 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
               {/* Seleção do nível — pré-marcado pela sugestão */}
               <div className="space-y-2">
                 {NIVEIS.map((n) => {
-                  const sel = nivel === n.value;
+                  const sel       = nivel === n.value;
                   const isSugerido = sugestao?.nivel === n.value;
+
+                  // ── UX Dinâmico: "Agressivo" tem duas personalidades ──────
+                  // Personalidade A (Ambição):   renda saudável + metas exigentes → "Foco nas Metas 🎯"
+                  // Personalidade B (Crise):      renda sufocada (>85% comprometida) → "Sobrevivência 🚨"
+                  const emCrise   = n.value === "agressivo" && pctComprometida >= 85;
+                  const accentCrise = "#F87171"; // vermelho suave de alerta
+
+                  const displayEmoji = emCrise ? "🚨" : n.emoji;
+                  const displayLabel = emCrise ? "Rigor de Sobrevivência" : n.label;
+                  const displayDesc  = emCrise
+                    ? "Foco total em cortar gastos e resgatar o controle. O Consultor será implacável para que vocês não fechem no vermelho."
+                    : n.desc;
+                  const displayAccent = emCrise && sel ? accentCrise : accent;
+
                   return (
                     <button
                       key={n.value}
                       onClick={() => setNivel(n.value)}
                       className="w-full text-left px-4 py-4 rounded-2xl border transition-all"
                       style={sel
-                        ? { background: `${accent}12`, borderColor: `${accent}40` }
+                        ? { background: `${displayAccent}12`, borderColor: `${displayAccent}40` }
                         : { background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.07)" }
                       }
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-[22px]">{n.emoji}</span>
+                        <span className="text-[22px]">{displayEmoji}</span>
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[13.5px] font-medium text-white/85">{n.label}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[13.5px] font-medium text-white/85">{displayLabel}</span>
                             {isSugerido && (
                               <span
                                 className="text-[9px] uppercase tracking-[0.15em] px-1.5 py-0.5 rounded-full"
-                                style={{ background: `${accent}20`, color: accent }}
+                                style={{ background: `${displayAccent}20`, color: displayAccent }}
                               >
-                                Recomendado
+                                {emCrise ? "Urgente" : "Recomendado"}
                               </span>
                             )}
                           </div>
-                          <div className="text-[11.5px] text-white/40 mt-0.5">{n.desc}</div>
+                          <div className="text-[11.5px] text-white/40 mt-0.5">{displayDesc}</div>
                         </div>
                         {sel && (
-                          <div className="size-5 rounded-full flex items-center justify-center text-[11px] flex-shrink-0" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>✓</div>
+                          <div
+                            className="size-5 rounded-full flex items-center justify-center text-[11px] flex-shrink-0"
+                            style={{ background: displayAccent, color: "oklch(0.12 0.01 240)" }}
+                          >✓</div>
                         )}
                       </div>
                     </button>
