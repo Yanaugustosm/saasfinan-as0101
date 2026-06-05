@@ -7,7 +7,7 @@
  *   3. Veredito (Step 3) auto-seleciona o nível sugerido pelo algoritmo ao abrir o passo
  */
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData, calcNivelSugerido, fmt } from "@/contexts/DataContext";
@@ -157,6 +157,9 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
   const [step,   setStep]   = useState(0);
   const [saving, setSaving] = useState(false);
 
+  // Ref para impedir que o auto-select do Step 3 sobrescreva a escolha do usuário ao voltar
+  const hasSeenStep3 = useRef(false);
+
   // ── Cálculos ──────────────────────────────────────────────────────────────
 
   const rendaNum       = unmaskBRL(renda);
@@ -188,10 +191,12 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
     [rendaNum, custoTotalFixo, metas, reservaNum, mesesReserva]
   );
 
-  // FIX: Auto-seleciona o nível sugerido assim que o passo 3 abre
+  // FIX: Auto-seleciona o nível sugerido apenas na PRIMEIRA vez que o passo 3 abre.
+  // Se o usuário voltar e mudar algo, sua escolha manual é preservada.
   useEffect(() => {
-    if (step === 3 && sugestao) {
+    if (step === 3 && sugestao && !hasSeenStep3.current) {
       setNivel(sugestao.nivel);
+      hasSeenStep3.current = true;
     }
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -200,15 +205,16 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
   // Dois provedores = risco diluido = recomenda 3 meses para liberar caixa
   const recomendacaoMeses = dinamica === "um_provedor" ? 6 : 3;
 
-  // Veredito clínico
+  // Veredito clínico (linguagem simples e emocional — o casal quer saber se está bem ou mal)
   const veredito = useMemo(() => {
     if (rendaNum <= 0) return "";
     const pct = Math.round(pctComprometida);
     const folga = folgaMensal;
-    if (pct <= 40) return `Com ${pct}% da renda comprometida com o essencial, vocês têm uma folga saudável de ${fmt(folga)}/mês. Ótimo cenário para investir em sonhos.`;
-    if (pct <= 65) return `${pct}% da renda vai para custos fixos, deixando ${fmt(folga)}/mês livre. Com disciplina, vocês alcançam as metas no prazo.`;
-    if (pct <= 85) return `Atenção: ${pct}% da renda já está comprometida com o essencial. A margem de ${fmt(folga)}/mês exige controle rigoroso para honrar as metas.`;
-    return `Alerta crítico: ${pct}% da renda está comprometida, restando apenas ${fmt(Math.max(0, folga))}. Revisar os custos fixos é urgente antes de pensar em metas.`;
+    if (pct <= 40) return `Vocês estão indo muito bem! As contas fixas estão totalmente sob controle e sobra ${fmt(folga)} todo mês. Cenário perfeito para realizar sonhos rápidos.`;
+    if (pct <= 65) return `Vocês estão no caminho certo. As despesas cabem no bolso e a folga de ${fmt(folga)}/mês permite guardar dinheiro com tranquilidade.`;
+    if (pct <= 85) return `Atenção: as contas do mês já consomem quase tudo que vocês ganham. Sobram ${fmt(folga)}/mês. O foco agora é não criar dívidas novas.`;
+    if (pct < 100) return `🚨 Sinal Amarelo: quase toda a renda já está comprometida com os gastos fixos. A margem de ${fmt(Math.max(0, folga))} é muito pequena. Cortar excessos agora é o caminho.`;
+    return `🔴 Sinal Vermelho: os gastos fixos já são maiores que a renda de vocês. Estão operando no vermelho em ${fmt(Math.abs(folga))}/mês. O foco precisa ser 100% em cortar excessos antes de qualquer meta.`;
   }, [rendaNum, pctComprometida, folgaMensal]);
 
   // ── Helpers de Streaming ──────────────────────────────────────────────────
@@ -246,7 +252,8 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
           ...Object.fromEntries(
             customStreamings
               .filter((c) => c.nome.trim())
-              .map((c) => [c.nome.trim(), parseFloat(c.preco.replace(/\./g, "")) || 0])
+              // FIX: usar unmaskBRL para converter corretamente pt-BR (ex: "1.500,90" → 1500.90)
+              .map((c) => [c.nome.trim(), unmaskBRL(c.preco)])
           ),
         },
         custoTransporte:        Math.round(transporteNum * 100) / 100,
@@ -497,11 +504,11 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                         <span className="text-[12px] text-white/55 flex-1">{s.nome}</span>
                         <span className="text-[12px] text-white/30">R$</span>
                         <input
-                          type="number"
-                          inputMode="decimal"
-                          value={streamingsSel[s.id]}
-                          onChange={(e) => updateStreamingPreco(s.id, parseFloat(e.target.value) || 0)}
-                          className="w-20 text-right bg-transparent text-[13px] text-white/80 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          type="text"
+                          inputMode="numeric"
+                          value={maskBRL(streamingsSel[s.id])}
+                          onChange={(e) => updateStreamingPreco(s.id, unmaskBRL(maskBRL(e.target.value)))}
+                          className="w-20 text-right bg-transparent text-[13px] text-white/80 focus:outline-none"
                         />
                       </div>
                     ))}
@@ -580,8 +587,13 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                     <span className="text-[16px] font-medium" style={{ color: accent }}>{fmt(custoTotalFixo)}</span>
                   </div>
                   {rendaNum > 0 && (
-                    <p className="text-[11.5px] text-white/40 text-center">
-                      {Math.round(pctComprometida)}% da renda comprometida com o essencial
+                    <p
+                      className="text-[11.5px] text-center font-medium"
+                      style={{ color: pctComprometida >= 100 ? "#F87171" : "oklch(1 0 0 / 0.40)" }}
+                    >
+                      {pctComprometida >= 100
+                        ? `🔴 Gastos superam a renda em ${fmt(Math.abs(folgaMensal))}/mês`
+                        : `${Math.round(pctComprometida)}% da renda comprometida com o essencial`}
                     </p>
                   )}
                 </div>
@@ -602,19 +614,19 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
 
               {/* Header */}
               <div>
-                <div className={labelCls}>Reserva de Emergência</div>
+                <div className={labelCls}>Proteção para Imprevistos</div>
                 <p className="text-[12px] text-white/40 mt-1 leading-relaxed">
-                  Sua proteção financeira caso a vida surpreenda. Calculamos os valores com base na realidade de vocês.
+                  Quanto guardar para quando a vida surpreender? Calculamos tudo com base nos gastos reais de vocês.
                 </p>
               </div>
 
               {/* Opções — lista vertical espaçosa */}
               <div className="flex flex-col gap-3">
                 {([
-                  { meses: 0,  emoji: "🛑", label: "Desativar reserva",        desc: "Foco 100% nas metas. O Consultor não cobrará reserva de emergência.",                                      tag: null },
-                  { meses: 3,  emoji: "🚀", label: "3 meses — Acelerado",      desc: "Proteção básica para quem tem renda estável. Libera caixa mais rápido para os sonhos.",                    tag: "Menor esforço" },
-                  { meses: 6,  emoji: "⚖️",  label: "6 meses — Equilibrado",   desc: "Padrão recomendado pelo mercado financeiro. Segurança real sem sacrificar as metas.",                     tag: "Mais popular" },
-                  { meses: 12, emoji: "🛡️", label: "12 meses — Conservador",  desc: "Máxima proteção. Ideal para autônomos, empreendedores ou quem tem renda variável.",                       tag: "Máxima proteção" },
+                  { meses: 0,  emoji: "🛑", label: "Sem proteção",                    desc: "Foco total nas metas. O Sincronia não vai cobrar reserva de vocês.",                                                                   tag: null },
+                  { meses: 3,  emoji: "🚀", label: "3 meses (Acelerar as metas)",     desc: "Proteção básica para quem tem renda estável. Libera dinheiro mais rápido para realizar os sonhos.",                                    tag: "Menor esforço" },
+                  { meses: 6,  emoji: "⚖️",  label: "6 meses (Ponto de equilíbrio)",  desc: "O equilíbrio perfeito. Vocês ficam bem protegidos sem precisar esperar muito para realizar as metas.",                                 tag: "Mais popular" },
+                  { meses: 12, emoji: "🛡️", label: "12 meses (Segurança total)",      desc: "Proteção máxima. Ideal para autônomos, empreendedores ou quem tem renda variável.",                                                    tag: "Proteção total" },
                 ] as const).map((op) => {
                   const sel    = mesesReserva === op.meses;
                   const isRec  = op.meses === recomendacaoMeses;
@@ -645,7 +657,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                                   className="text-[8.5px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"
                                   style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
                                 >
-                                  ✨ Consultor
+                                  ✨ Sugerido
                                 </span>
                               )}
                               {op.tag && !isRec && (
@@ -712,26 +724,26 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 >
                   {mesesReserva === 0 && (
                     <p className="text-[12.5px] text-white/50 leading-relaxed">
-                      💡 <strong className="text-white/70">O Consultor entende.</strong> Sem cobranças sobre reserva. Foco total nos gastos e metas de vocês.
+                      💡 <strong className="text-white/70">Tudo bem!</strong> Sem proteção de emergência, o foco vai 100% para as metas de vocês. Mas se um imprevisto aparecer, fiquem atentos.
                     </p>
                   )}
                   {mesesReserva === 3 && (
                     <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}E0` }}>
-                      ✅ <strong>Boa escolha para quem quer acelerar.</strong> Com 3 meses de proteção, vocês já liberam o restante da folga para os sonhos. Risco controlado, especialmente com {dinamica === "dois_provedores" ? "duas fontes de renda" : "disciplina financeira sólida"}.
+                      ✅ <strong>Boa escolha!</strong> Com 3 meses de proteção, vocês já podem direcionar o restante da sobra para os sonhos. {dinamica === "dois_provedores" ? "Com dois salários, o risco está bem controlado." : "Importante manter a disciplina no dia a dia."}
                     </p>
                   )}
                   {mesesReserva === 6 && (
                     <p className="text-[12.5px] leading-relaxed" style={{ color: `${accent}E0` }}>
-                      ⚖️ <strong>O ponto de equilíbrio ideal.</strong> 6 meses é o padrão das principais consultorias financeiras do Brasil. Vocês ficam protegidos sem travar os sonhos por tempo demais.
+                      ⚖️ <strong>Ótima escolha!</strong> 6 meses é o equilíbrio perfeito. Vocês ficam bem protegidos sem precisar esperar muito para realizar as metas.
                     </p>
                   )}
                   {mesesReserva === 12 && (
                     <div className="space-y-2">
                       <p className="text-[12.5px] text-white/65 leading-relaxed">
-                        ⚠️ <strong className="text-white/85">Cuidado com o custo de oportunidade.</strong> 12 meses dá segurança máxima, mas com a folga atual levaria <strong className="text-white/80">~{calcTempoReserva(custoTotalFixo * 12, folgaMensal)}</strong> para completar — período em que as metas ficam em espera.
+                        ⚠️ <strong className="text-white/85">Atenção: é a opção mais segura, mas mais demorada.</strong> Com a renda atual, vai levar cerca de <strong className="text-white/80">~{calcTempoReserva(custoTotalFixo * 12, folgaMensal)}</strong> para juntar esse valor — e nesse período as outras metas vão ter que esperar.
                       </p>
                       {folgaMensal <= 0 && (
-                        <p className="text-[11px] text-white/35">Revisar os gastos fixos primeiro pode ser o caminho mais inteligente.</p>
+                        <p className="text-[11px] text-white/35">Rever os gastos fixos primeiro pode ser o caminho mais inteligente.</p>
                       )}
                     </div>
                   )}
@@ -790,7 +802,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
               <div className="rounded-2xl p-4 border" style={{ background: `${accent}08`, borderColor: `${accent}20` }}>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-[14px]">✦</span>
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-white/40">Diagnóstico do Consultor</span>
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-white/40">Como vocês estão hoje?</span>
                 </div>
 
                 {/* Cards numéricos */}
@@ -818,7 +830,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                     className="mt-3 text-[12px] font-medium transition hover:opacity-80"
                     style={{ color: accent }}
                   >
-                    Usar nível <strong>{sugestao.nivel}</strong> →
+                    Aceitar sugestão →
                   </button>
                 )}
               </div>
@@ -827,7 +839,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
               <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/[0.07]" />
                 <span className="text-[9.5px] uppercase tracking-[0.20em] text-white/25 font-medium whitespace-nowrap">
-                  Nível de Atuação do Consultor
+                  O que vamos fazer agora?
                 </span>
                 <div className="h-px flex-1 bg-white/[0.07]" />
               </div>
@@ -897,7 +909,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                   className="flex-1 h-12 rounded-2xl text-[14px] font-semibold transition-all active:scale-[0.98]"
                   style={{ background: "oklch(0.96 0.012 80)", color: "oklch(0.12 0.01 240)" }}
                 >
-                  {saving ? "Salvando…" : "✓ Ativar o Consultor"}
+                  {saving ? "Salvando…" : "✓ Começar Sincronia"}
                 </button>
               </div>
             </div>
