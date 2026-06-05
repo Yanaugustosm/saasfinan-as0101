@@ -114,8 +114,16 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
   // ── Sugestão inteligente ──────────────────────────────────────────────────
 
   const sugestao = useMemo(
-    () => rendaNum > 0 ? calcNivelSugerido(rendaNum, custoTotalFixo, metas) : null,
-    [rendaNum, custoTotalFixo, metas]
+    () => rendaNum > 0
+      ? calcNivelSugerido(
+          rendaNum,
+          custoTotalFixo,
+          metas,
+          reservaNum,
+          mesesReserva * custoTotalFixo  // reservaIdeal = meses * custo essencial
+        )
+      : null,
+    [rendaNum, custoTotalFixo, metas, reservaNum, mesesReserva]
   );
 
   // FIX: Auto-seleciona o nível sugerido assim que o passo 3 abre

@@ -372,20 +372,21 @@ export function analyzeBehavior(
 
   // ── Nível 2: Alertas de Desvio (compara o declarado com o real) ────────────
   const mesAtual = new Date().toISOString().slice(0, 7);
-  const { rec: recMesAtual, des: desMesAtual } = calcTotais(
+  const { rec: recMesAtual, des: desMesAtual, desEssencial: desEssencialAtual } = calcTotais(
     transacoes.filter((t) => t.data?.startsWith(mesAtual))
   );
 
   // Renda efetiva: usa real se já houver lançamentos, senão usa a declarada na Anamnese
   const rendaEfetiva = recMesAtual > 0 ? recMesAtual : rendaDeclarada;
 
-  // Alerta: Custos fixos reais ultrapassaram o declarado na Anamnese
-  if (custoFixoDeclarado > 0 && desMesAtual > custoFixoDeclarado * 1.10) {
-    const excesso = desMesAtual - custoFixoDeclarado;
+  // FIX 2: Compara APENAS despesas Essenciais com o custo fixo declarado
+  // (evita falso alarme ao misturar iFood/variáveis com o custo fixo da casa)
+  if (custoFixoDeclarado > 0 && desEssencialAtual > custoFixoDeclarado * 1.10) {
+    const excesso = desEssencialAtual - custoFixoDeclarado;
     alertasComportamentais.push({
       icon: "📊",
-      titulo: "Custos acima do planejado",
-      desc: `Os gastos deste mês (${fmt(desMesAtual)}) ultrapassaram em ${fmt(excesso)} o que vocês declararam na configuração. Revise os custos fixos.`,
+      titulo: "Custos fixos acima do planejado",
+      desc: `Seus gastos essenciais (${fmt(desEssencialAtual)}) ultrapassaram em ${fmt(excesso)} o custo fixo declarado. Revise as despesas fixas da casa.`,
     });
   }
 
@@ -399,29 +400,34 @@ export function analyzeBehavior(
       return new Date(a.prazo).getTime() - new Date(b.prazo).getTime();
     })[0];
 
-  if (rendaEfetiva > 0 && desMesAtual > 0) {
+  // FIX 1: Alerta de sobra só dispara no final do mês (dia >= 25)
+  // Antes disso, o mês ainda está incompleto — a despesa real ainda virá
+  if (hoje.getDate() >= 25 && rendaEfetiva > 0 && desMesAtual > 0) {
     const sobraMes = rendaEfetiva - desMesAtual;
     if (sobraMes > rendaEfetiva * 0.20 && metaPrioritaria) {
       alertasComportamentais.push({
         icon: "💡",
         titulo: `Sobra de ${fmt(sobraMes)} este mês`,
-        desc: `Vocês estão ${fmt(sobraMes)} positivos. Que tal destinar parte disso para a meta "${metaPrioritaria.titulo}"?`,
+        desc: `Mês quase fechado e vocês estão ${fmt(sobraMes)} positivos. Que tal destinar parte disso para "${metaPrioritaria.titulo}"?`,
       });
     }
   }
 
-  // Alerta de frequência de gadinhos (delivery, restaurantes)
-  const catGadinhos = ["Restaurantes", "Alimentação", "Lazer", "Streaming", "Viagens"];
-  catGadinhos.forEach((cat) => {
-    if ((catCount[cat] || 0) > threshold) {
-      const vezes = catCount[cat];
-      alertasComportamentais.push({
-        icon: "🍔",
-        titulo: `${vezes}x em ${cat}`,
-        desc: `Vocês gastaram ${vezes} vezes em ${cat} neste mês. Para o nível ${nivelEconomia}, o ideal é até ${threshold}x.`,
-      });
-    }
-  });
+  // FIX 3: Alerta de Gadinhos via tipoGasto=="desejo" — não punir compras de mercado ou Netflix
+  const despesasDesejo = ultimas.filter((t) => t.tipoGasto === "desejo");
+  const dezejosCount = despesasDesejo.length;
+  const dezejosThreshold: Record<NivelEconomia, number> = {
+    agressivo: 4,
+    moderado:  8,
+    conforto:  15,
+  };
+  if (dezejosCount > dezejosThreshold[nivelEconomia]) {
+    alertasComportamentais.push({
+      icon: "🍔",
+      titulo: `${dezejosCount} gastos de desejo`,
+      desc: `Nos últimos 30 dias, vocês registraram ${dezejosCount} gastos de "desejo". Para o nível ${nivelEconomia}, o ideal é até ${dezejosThreshold[nivelEconomia]}. Atenção ao padrão de consumo!`,
+    });
+  }
 
   // Freio de Metas
   const metasAtivas = metas.filter((m) => m.ativo && m.valor > 0);
@@ -522,12 +528,16 @@ export function analyzeBehavior(
 }
 
 /**
- * Calcula o Nível de Economia sugerido com base na renda e nas metas ativas.
+ * Calcula o Nível de Economia sugerido com base na renda, metas ativas e necessidade de reserva.
+ * FIX 4: considera o deficit de Reserva de Emergência na equação — um casal sem reserva
+ * não pode ser classificado como "Conforto" só porque não tem metas de luxo.
  */
 export function calcNivelSugerido(
   recMedia: number,
   custoEssencial: number,
-  metas: Meta[]
+  metas: Meta[],
+  reservaExistente = 0,
+  reservaIdeal = 0
 ): { nivel: NivelEconomia; motivo: string } {
   const aporteNecessario = metas
     .filter((m) => m.ativo && m.prazo)
@@ -542,10 +552,14 @@ export function calcNivelSugerido(
       return sum + (m.valor - m.acumulado) / meses;
     }, 0);
 
-  const folga = recMedia - custoEssencial - aporteNecessario;
+  // Deficit da reserva diluído em 12 meses — segurança financeira é prioridade
+  const deficitReserva = Math.max(0, reservaIdeal - reservaExistente);
+  const aporteReserva  = deficitReserva / 12;
+
+  const folga    = recMedia - custoEssencial - aporteNecessario - aporteReserva;
   const pctFolga = recMedia > 0 ? (folga / recMedia) * 100 : 0;
 
-  if (pctFolga >= 30) return { nivel: "conforto", motivo: "Vocês têm folga financeira confortável para seus objetivos." };
-  if (pctFolga >= 15) return { nivel: "moderado", motivo: "Com disciplina moderada, vocês alcançam as metas no prazo." };
-  return { nivel: "agressivo", motivo: "Para bater as metas no prazo, é necessário controle rigoroso de gastos." };
+  if (pctFolga >= 30) return { nivel: "conforto",  motivo: "Vocês têm folga financeira confortável para seus objetivos." };
+  if (pctFolga >= 15) return { nivel: "moderado",  motivo: "Com disciplina moderada, vocês alcançam as metas e completam a reserva no prazo." };
+  return             { nivel: "agressivo", motivo: "Para bater as metas e construir a reserva de segurança no prazo, é necessário controle rigoroso." };
 }
