@@ -30,6 +30,13 @@ interface StreamingDef {
   precoSugerido: number;
 }
 
+/** Assinatura criada manualmente pelo usuário (sem logo pré-definida) */
+interface CustomStreaming {
+  id:    string;   // chave estável: "custom_<timestamp>"
+  nome:  string;   // nome livre editável
+  preco: string;   // string para compatibilidade com maskBRL
+}
+
 // CDN: Simple Icons (SVGs vetoriais oficiais com cores de marca, open-source, sem bloqueio)
 const SI = (slug: string, color: string) =>
   `https://cdn.simpleicons.org/${slug}/${color}`;
@@ -60,6 +67,36 @@ const NIVEIS: { value: NivelEconomia; emoji: string; label: string; desc: string
 
 const TOTAL_STEPS = 4;
 
+// ─── Helpers de Máscara Monetária (padrão pt-BR, cents-based) ──────────────────────────────
+/** Formata em "20.000,00" — aceita número puro do Firebase ou string da digitação */
+const maskBRL = (raw: string | number): string => {
+  if (raw === "" || raw === null || raw === undefined) return "";
+
+  let digits: string;
+  if (typeof raw === "number") {
+    // Número puro do Firebase (ex: 20000) → converte para centavos como string
+    digits = (raw * 100).toFixed(0);
+  } else {
+    digits = String(raw).replace(/\D/g, "");
+  }
+
+  if (!digits) return "";
+
+  const padded       = digits.padStart(3, "0");
+  const intPart      = padded.slice(0, -2).replace(/^0+/, "") || "0";
+  const decPart      = padded.slice(-2);
+  const intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  return `${intFormatted},${decPart}`;
+};
+
+/** Converte "20.000,00" de volta para o número 20000 (para a matemática do Consultor) */
+const unmaskBRL = (masked: string): number => {
+  if (!masked) return 0;
+  const digits = masked.replace(/\D/g, "");
+  return parseInt(digits, 10) / 100 || 0;
+};
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorPerfilProps) {
@@ -74,21 +111,29 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
   const [dinamica, setDinamica] = useState<"um_provedor" | "dois_provedores">(
     group?.dinamicaRenda ?? "dois_provedores"
   );
-  const [renda, setRenda] = useState(String(group?.rendaDeclarada ?? ""));
+  const [renda, setRenda] = useState(maskBRL(group?.rendaDeclarada ?? ""));
 
   // Step 1
-  const [custoMoradia,    setCustoMoradia]    = useState(String(group?.custoMoradia    ?? ""));
-  const [custoMercado,    setCustoMercado]    = useState(String(group?.custoMercado    ?? ""));
-  const [custoTransporte, setCustoTransporte] = useState(String(group?.custoTransporte ?? ""));
+  const [custoMoradia,    setCustoMoradia]    = useState(maskBRL(group?.custoMoradia    ?? ""));
+  const [custoMercado,    setCustoMercado]    = useState(maskBRL(group?.custoMercado    ?? ""));
+  const [custoTransporte, setCustoTransporte] = useState(maskBRL(group?.custoTransporte ?? ""));
 
-  // Streamings — mapa de id → preço mensal selecionado
+  // Streamings — mapa de id → preço mensal selecionado (assinaturas oficiais)
   const [streamingsSel, setStreamingsSel] = useState<Record<string, number>>(
     group?.assinaturasDetalhadas ?? {}
   );
 
+  // Assinaturas personalizadas: chaves do banco que não estão na lista oficial
+  const [customStreamings, setCustomStreamings] = useState<CustomStreaming[]>(() => {
+    const officialIds = new Set(STREAMINGS.map((s) => s.id));
+    return Object.entries(group?.assinaturasDetalhadas ?? {})
+      .filter(([k]) => !officialIds.has(k))
+      .map(([nome, preco]) => ({ id: `custom_${nome}`, nome, preco: maskBRL(preco as number) }));
+  });
+
   // Step 2
   const [mesesReserva, setMesesReserva] = useState<number>(group?.mesesReservaIdeal ?? 6);
-  const [reserva,      setReserva]      = useState(String(group?.reservaExistente   ?? ""));
+  const [reserva, setReserva] = useState(maskBRL(group?.reservaExistente ?? ""));
 
   // Step 3
   const [nivel, setNivel] = useState<NivelEconomia>(group?.nivelEconomia ?? "moderado");
@@ -98,14 +143,15 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
 
-  const rendaNum       = parseFloat(renda.replace(",", "."))         || 0;
-  const moradiaNum     = parseFloat(custoMoradia.replace(",", "."))  || 0;
-  const mercadoNum     = parseFloat(custoMercado.replace(",", "."))  || 0;
-  const transporteNum  = parseFloat(custoTransporte.replace(",", ".")) || 0;
-  const reservaNum     = parseFloat(reserva.replace(",", "."))       || 0;
+  const rendaNum       = unmaskBRL(renda);
+  const moradiaNum     = unmaskBRL(custoMoradia);
+  const mercadoNum     = unmaskBRL(custoMercado);
+  const transporteNum  = unmaskBRL(custoTransporte);
+  const reservaNum     = unmaskBRL(reserva);
 
-  // Soma dos streamings selecionados (calculado automaticamente)
-  const assinaturasNum = Object.values(streamingsSel).reduce((a, b) => a + b, 0);
+  // Soma dos streamings selecionados + personalizados (calculado automaticamente)
+  const customTotal    = customStreamings.reduce((s, c) => s + unmaskBRL(c.preco), 0);
+  const assinaturasNum = Object.values(streamingsSel).reduce((a, b) => a + b, 0) + customTotal;
 
   const custoTotalFixo  = moradiaNum + mercadoNum + assinaturasNum + transporteNum;
   const folgaMensal     = rendaNum - custoTotalFixo;
@@ -173,7 +219,15 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
         custoMoradia:           Math.round(moradiaNum    * 100) / 100,
         custoMercado:           Math.round(mercadoNum    * 100) / 100,
         custoAssinaturas:       totalAssinaturas,
-        assinaturasDetalhadas:  streamingsSel,
+        assinaturasDetalhadas:  {
+          ...streamingsSel,
+          // Persiste as assinaturas personalizadas com o nome como chave
+          ...Object.fromEntries(
+            customStreamings
+              .filter((c) => c.nome.trim())
+              .map((c) => [c.nome.trim(), parseFloat(c.preco.replace(/\./g, "")) || 0])
+          ),
+        },
         custoTransporte:        Math.round(transporteNum * 100) / 100,
         custoVidaEssencial:     totalFixo,
         reservaExistente:       Math.round(reservaNum    * 100) / 100,
@@ -188,7 +242,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
 
   if (!isOpen) return null;
 
-  const inputCls = "w-full h-12 pl-10 pr-4 rounded-2xl text-[15px] bg-white/[0.05] border border-white/[0.08] text-white/85 focus:outline-none focus:border-white/20 transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const inputCls = "w-full h-12 pl-10 pr-4 rounded-2xl text-[15px] bg-white/[0.05] border border-white/[0.08] text-white/85 focus:outline-none focus:border-white/20 transition";
   const labelCls = "text-[10.5px] uppercase tracking-[0.20em] text-white/30 mb-2";
 
   const modal = (
@@ -288,7 +342,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 </div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
-                  <input type="number" inputMode="decimal" value={renda} onChange={(e) => setRenda(e.target.value)} placeholder="0,00" className={inputCls} autoFocus />
+                  <input type="text" inputMode="numeric" value={renda} onChange={(e) => setRenda(maskBRL(e.target.value))} placeholder="Ex: 5.000" className={inputCls} autoFocus />
                 </div>
                 {rendaNum > 0 && (
                   <p className="text-[11px] text-white/35 mt-1.5">
@@ -327,7 +381,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 <div className={labelCls}>🏠 Moradia (Aluguel / Condomínio / Financiamento)</div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
-                  <input type="number" inputMode="decimal" value={custoMoradia} onChange={(e) => setCustoMoradia(e.target.value)} placeholder="0,00" className={inputCls} />
+                  <input type="text" inputMode="numeric" value={custoMoradia} onChange={(e) => setCustoMoradia(maskBRL(e.target.value))} placeholder="Ex: 1.500" className={inputCls} />
                 </div>
               </div>
 
@@ -336,7 +390,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 <div className={labelCls}>🛒 Supermercado — Estimativa Base</div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
-                  <input type="number" inputMode="decimal" value={custoMercado} onChange={(e) => setCustoMercado(e.target.value)} placeholder="0,00" className={inputCls} />
+                  <input type="text" inputMode="numeric" value={custoMercado} onChange={(e) => setCustoMercado(maskBRL(e.target.value))} placeholder="Ex: 800" className={inputCls} />
                 </div>
                 {/* Aviso educativo sobre gastos variáveis */}
                 <p className="text-[11px] text-white/30 mt-1.5 leading-relaxed">
@@ -395,10 +449,24 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                       </button>
                     );
                   })}
+                  {/* Chip "+ Outro" — adiciona assinatura personalizada */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomStreamings((prev) => [
+                        ...prev,
+                        { id: `custom_${Date.now()}`, nome: "", preco: "" },
+                      ])
+                    }
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg border border-dashed transition-all duration-200 hover:border-white/25"
+                    style={{ borderColor: "oklch(1 0 0 / 0.13)", background: "transparent" }}
+                  >
+                    <span className="text-[11.5px] font-medium" style={{ color: "oklch(1 0 0 / 0.38)" }}>+ Outro</span>
+                  </button>
                 </div>
 
                 {/* Inputs de preço dos selecionados */}
-                {Object.keys(streamingsSel).length > 0 && (
+                {(Object.keys(streamingsSel).length > 0 || customStreamings.length > 0) && (
                   <div className="space-y-2">
                     <div className="text-[10px] uppercase tracking-[0.18em] text-white/20 mb-1">Confirmar valores mensais</div>
                     {STREAMINGS.filter((s) => streamingsSel[s.id] !== undefined).map((s) => (
@@ -414,6 +482,48 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                           onChange={(e) => updateStreamingPreco(s.id, parseFloat(e.target.value) || 0)}
                           className="w-20 text-right bg-transparent text-[13px] text-white/80 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
+                      </div>
+                    ))}
+
+                    {/* Assinaturas personalizadas editáveis */}
+                    {customStreamings.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center gap-2 rounded-xl px-3 py-2 border"
+                        style={{ background: "oklch(1 0 0 / 0.03)", borderColor: "oklch(1 0 0 / 0.07)" }}
+                      >
+                        <span className="text-[14px] flex-shrink-0">📦</span>
+                        <input
+                          type="text"
+                          value={c.nome}
+                          placeholder="Nome (ex: Academia)"
+                          onChange={(e) =>
+                            setCustomStreamings((prev) =>
+                              prev.map((x) => x.id === c.id ? { ...x, nome: e.target.value } : x)
+                            )
+                          }
+                          className="text-[12px] bg-transparent text-white/70 focus:outline-none flex-1 min-w-0 placeholder-white/25"
+                        />
+                        <span className="text-[12px] text-white/30 flex-shrink-0">R$</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={c.preco}
+                          placeholder="0"
+                          onChange={(e) =>
+                            setCustomStreamings((prev) =>
+                              prev.map((x) => x.id === c.id ? { ...x, preco: maskBRL(e.target.value) } : x)
+                            )
+                          }
+                          className="w-20 text-right bg-transparent text-[13px] text-white/80 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCustomStreamings((prev) => prev.filter((x) => x.id !== c.id))
+                          }
+                          className="text-[12px] text-white/20 hover:text-red-400 transition flex-shrink-0 ml-0.5"
+                        >✕</button>
                       </div>
                     ))}
 
@@ -434,7 +544,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 <div className={labelCls}>🚗 Transporte & Combustível</div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
-                  <input type="number" inputMode="decimal" value={custoTransporte} onChange={(e) => setCustoTransporte(e.target.value)} placeholder="0,00" className={inputCls} />
+                  <input type="text" inputMode="numeric" value={custoTransporte} onChange={(e) => setCustoTransporte(maskBRL(e.target.value))} placeholder="Ex: 300" className={inputCls} />
                 </div>
               </div>
 
@@ -513,7 +623,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                   <div className={labelCls}>Quanto vocês já têm guardado?</div>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
-                    <input type="number" inputMode="decimal" value={reserva} onChange={(e) => setReserva(e.target.value)} placeholder="0,00" className={inputCls} />
+                    <input type="text" inputMode="numeric" value={reserva} onChange={(e) => setReserva(maskBRL(e.target.value))} placeholder="Ex: 10.000" className={inputCls} />
                   </div>
                   {reservaNum > 0 && (
                     <p className="text-[11px] text-white/35 mt-1.5">
