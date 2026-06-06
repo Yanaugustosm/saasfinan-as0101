@@ -60,9 +60,9 @@ const STREAMINGS: StreamingDef[] = [
 // ─── Constantes visuais ──────────────────────────────────────────────────────
 
 const NIVEIS: { value: NivelEconomia; emoji: string; label: string; desc: string }[] = [
-  { value: "conforto",  emoji: "🛋️", label: "Conforto",  desc: "Gastam bem e ainda economizam. O Consultor só alerta gastos muito excessivos." },
-  { value: "moderado",  emoji: "⚖️", label: "Moderado",  desc: "Equilíbrio entre qualidade de vida e metas. O Consultor avisa excessos pontuais." },
-  { value: "agressivo", emoji: "🎯", label: "Agressivo", desc: "Foco máximo nas metas. O Consultor cobra rigor em qualquer desvio." },
+  { value: "conforto",  emoji: "🛏️", label: "Conforto",  desc: "Qualidade de vida em primeiro lugar. O Consultor sinaliza apenas quando os gastos comprometem metas definidas." },
+  { value: "moderado",  emoji: "⚖️", label: "Moderado",  desc: "Equilíbrio entre viver bem e construir patrimônio. O Consultor avisa desvios pontuais antes que virem padrão." },
+  { value: "agressivo", emoji: "🎯", label: "Agressivo", desc: "Foco total em cortar o que não é essencial. O Consultor vai ser impecável — vocês pediram isso." },
 ];
 
 const TOTAL_STEPS = 4;
@@ -205,17 +205,17 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
   // Dois provedores = risco diluido = recomenda 3 meses para liberar caixa
   const recomendacaoMeses = dinamica === "um_provedor" ? 6 : 3;
 
-  // Veredito clínico
+  // Veredito clínico — direto, cirúrgico, sem adjetivos vazios
   const veredito = useMemo(() => {
     if (rendaNum <= 0) return "";
     const pct = Math.round(pctComprometida);
     const folga = folgaMensal;
-    if (pct <= 40) return `Com ${pct}% da renda comprometida com o essencial, vocês têm uma folga saudável de ${fmt(folga)}/mês. Ótimo cenário para investir em sonhos.`;
-    if (pct <= 65) return `${pct}% da renda vai para custos fixos, deixando ${fmt(folga)}/mês livre. Com disciplina, vocês alcançam as metas no prazo.`;
-    if (pct <= 85) return `Atenção: ${pct}% da renda já está comprometida com o essencial. A margem de ${fmt(folga)}/mês exige controle rigoroso para honrar as metas.`;
-    if (pct < 100) return `🚨 Alerta crítico: ${pct}% da renda está comprometida. A margem restante de ${fmt(Math.max(0, folga))} é insuficiente para metas. Corte de custos fixos é inegociável.`;
-    return `🔴 Déficit real: os gastos fixos de vocês já ultrapassam a renda em ${fmt(Math.abs(folga))}/mês. Nesse ritmo, vocês acumulam dívida todo mês. Cortes drásticos são urgentes antes de qualquer meta.`;
-  }, [rendaNum, pctComprometida, folgaMensal]);
+    if (pct <= 40)  return `Com ${pct}% da renda comprometida, vocês têm uma folga de ${fmt(folga)}/mês. Estão na via rápida para os sonhos.`;
+    if (pct <= 65)  return `Com ${pct}% da renda voltada ao essencial e ${fmt(folga)}/mês de sobra, vocês estão no caminho certo.`;
+    if (pct <= 85)  return `O comprometimento de ${pct}% deixa apenas ${fmt(folga)}/mês livres. Qualquer imprevisto pode atrasar as metas.`;
+    if (pct < 100)  return `A margem de ${fmt(Math.max(0, folga))} está muito apertada. Os sonhos dependem de um ajuste fino no orçamento.`;
+    return `O custo fixo de ${fmt(custoTotalFixo)} supera a renda. Equilibrar o fluxo é o passo obrigatório antes de qualquer meta.`;
+  }, [rendaNum, pctComprometida, folgaMensal, custoTotalFixo]);
 
   // ── Helpers de Streaming ──────────────────────────────────────────────────
 
@@ -298,8 +298,8 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
             </div>
             <p className="text-[12px] text-white/35">
               {isMandatory
-                ? "Vamos calibrar a inteligência do sistema para a realidade de vocês."
-                : "Recalibrar o Consultor com os dados atuais do casal."}
+                ? "O Consultor precisa conhecer a realidade financeira de vocês para trabalhar com precisão."
+                : "Ajuste os pilares do orçamento e otimize sua estratégia mensal."}
             </p>
           </div>
           {!isMandatory && (
@@ -330,7 +330,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
             <div className="space-y-4 animate-fade-up">
               <div className="rounded-2xl p-4 border" style={{ background: `${accent}08`, borderColor: `${accent}20` }}>
                 <p className="text-[13px] text-white/60 leading-relaxed">
-                  <strong className="text-white/80">Raio-X da Renda</strong> — vamos entender quanto dinheiro entra no casal todo mês. Isso é a base de todo o diagnóstico do Consultor.
+                  <strong className="text-white/80">Base do orçamento.</strong> Definir a renda líquida mensal é o ponto de partida para o Sincronia.
                 </p>
               </div>
 
@@ -400,7 +400,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
             <div className="space-y-5 animate-fade-up">
               <div className="rounded-2xl p-4 border" style={{ background: `${accent}08`, borderColor: `${accent}20` }}>
                 <p className="text-[13px] text-white/60 leading-relaxed">
-                  <strong className="text-white/80">Custos fixos</strong> são os gastos previsíveis todo mês. Quanto mais preciso, mais certeiro o Consultor.
+                  <strong className="text-white/80">O essencial.</strong> Quanto da renda já está comprometido com o básico para manter a casa rodando?
                 </p>
               </div>
 
@@ -415,21 +415,21 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
 
               {/* Mercado — com aviso sobre gastos variáveis */}
               <div>
-                <div className={labelCls}>🛒 Supermercado — Estimativa Base</div>
+                <div className={labelCls}>🛍️ Supermercado — compra básica mensal</div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
                   <input type="text" inputMode="numeric" value={custoMercado} onChange={(e) => setCustoMercado(maskBRL(e.target.value))} placeholder="Ex: 800" className={inputCls} />
                 </div>
                 {/* Aviso educativo sobre gastos variáveis */}
                 <p className="text-[11px] text-white/30 mt-1.5 leading-relaxed">
-                  ⚠️ Coloque apenas a compra básica mensal (mercado, feira). Gastos como <strong className="text-white/40">iFood, delivery e restaurantes</strong> são variáveis e o Consultor os rastreia separadamente nos lançamentos.
+                  ⚠️ Não inclua iFood ou restaurantes — o Consultor os rastreia separadamente nos lançamentos.
                 </p>
               </div>
 
               {/* Assinaturas — Grid Premium com Logos Oficiais */}
               <div>
                 <div className={labelCls}>🎬 Streamings & Assinaturas</div>
-                <p className="text-[11.5px] text-white/35 mb-3">Selecione os serviços que vocês assinam. O sistema calcula o total automaticamente.</p>
+                <p className="text-[11.5px] text-white/35 mb-3">Selecione os serviços de vocês.</p>
 
                 {/* Chips retangulares horizontais — compactos e elegantes */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
@@ -576,6 +576,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 </div>
               </div>
 
+
               {/* Total ao vivo */}
               {custoTotalFixo > 0 && (
                 <div className="space-y-1">
@@ -620,19 +621,28 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                 </p>
               </div>
 
+
               {/* Opções — lista vertical espaçosa */}
               <div className="flex flex-col gap-3">
                 {([
-                  { meses: 0,  emoji: "🛑", label: "Desativar reserva",        desc: "Foco 100% nas metas. O Consultor não cobrará reserva de emergência.",                                      tag: null },
-                  { meses: 3,  emoji: "🚀", label: "3 meses — Acelerado",      desc: "Proteção básica para quem tem renda estável. Libera caixa mais rápido para os sonhos.",                    tag: "Menor esforço" },
-                  { meses: 6,  emoji: "⚖️",  label: "6 meses — Equilibrado",   desc: "Padrão recomendado pelo mercado financeiro. Segurança real sem sacrificar as metas.",                     tag: "Mais popular" },
-                  { meses: 12, emoji: "🛡️", label: "12 meses — Conservador",  desc: "Máxima proteção. Ideal para autônomos, empreendedores ou quem tem renda variável.",                       tag: "Máxima proteção" },
+                  { meses: 0,  emoji: "🎯", label: "Sem reserva",            desc: "Foco total nas metas. O Consultor não vai cobrar reserva de vocês.",                             badge: null },
+                  { meses: 3,  emoji: "🚀", label: "3 meses — Acelerado",    desc: "Boa escolha para quem quer acelerar. Menos tempo na defensiva, mais caixa para os sonhos.",   badge: "Acelerado" },
+                  { meses: 6,  emoji: "⚖️",  label: "6 meses — Equilibrado", desc: "Proteção sólida sem comprometer o ritmo das metas. Equilíbrio real.",                          badge: "Mais popular" },
+                  { meses: 12, emoji: "🛡️", label: "12 meses — Conservador", desc: "Segurança máxima. Recomendado para autônomos, empreendedores ou renda variável.",             badge: "Proteção total" },
                 ] as const).map((op) => {
-                  const sel    = mesesReserva === op.meses;
-                  const isRec  = op.meses === recomendacaoMeses;
-                  const alvoOp = custoTotalFixo * op.meses;
-                  const tempo  = op.meses > 0 ? calcTempoReserva(alvoOp, folgaMensal) : null;
-
+                  const sel   = mesesReserva === op.meses;
+                  const isRec = op.meses === recomendacaoMeses;
+                  const alvoOp   = custoTotalFixo * op.meses;
+                  const restante = Math.max(0, alvoOp - reservaNum);
+                  const tempoStr: string | null = (() => {
+                    if (op.meses === 0) return null;
+                    if (restante === 0) return "✅ já completa";
+                    if (folgaMensal <= 0) return "sem margem no momento";
+                    const mesesN = Math.ceil(restante / (folgaMensal * 0.5));
+                    if (mesesN <= 1) return "~1 mês";
+                    if (mesesN < 12) return `~${mesesN} meses`;
+                    return `~${(mesesN / 12).toFixed(1)} anos`;
+                  })();
                   return (
                     <button
                       key={op.meses}
@@ -645,71 +655,47 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
                         : { background: "oklch(1 0 0 / 0.025)", borderColor: "oklch(1 0 0 / 0.07)" }
                       }
                     >
-                      {/* Zona Superior: Conceito */}
                       <div className="px-4 pt-4 pb-3 flex items-start gap-3">
-                        <span className="text-[26px] leading-none mt-0.5 flex-shrink-0">{op.emoji}</span>
+                        <span className="text-[24px] leading-none mt-0.5 flex-shrink-0">{op.emoji}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <span className="text-[14px] font-semibold text-white/90 leading-tight">{op.label}</span>
                             <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
                               {isRec && (
-                                <span
-                                  className="text-[8.5px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full font-bold whitespace-nowrap"
-                                  style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
-                                >
+                                <span className="text-[8.5px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>
                                   ✨ Consultor
                                 </span>
                               )}
-                              {op.tag && !isRec && (
-                                <span
-                                  className="text-[8.5px] uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap"
-                                  style={{ background: "oklch(1 0 0 / 0.07)", color: "oklch(1 0 0 / 0.35)" }}
-                                >
-                                  {op.tag}
+                              {op.badge && !isRec && (
+                                <span className="text-[8.5px] uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full font-bold whitespace-nowrap" style={{ background: "oklch(1 0 0 / 0.07)", color: "oklch(1 0 0 / 0.35)" }}>
+                                  {op.badge}
                                 </span>
                               )}
                               {sel && (
-                                <span
-                                  className="size-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0"
-                                  style={{ background: accent, color: "oklch(0.12 0.01 240)" }}
-                                >✓</span>
+                                <span className="size-5 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: accent, color: "oklch(0.12 0.01 240)" }}>✓</span>
                               )}
                             </div>
                           </div>
                           <p className="text-[11.5px] text-white/40 mt-1.5 leading-relaxed">{op.desc}</p>
+                          {op.meses > 0 && alvoOp > 0 && (
+                            <div className="flex items-center gap-4 mt-2.5 pt-2 border-t border-white/[0.06]">
+                              <span className="text-[10px] text-white/30">
+                                Alvo: <strong className="text-white/55">{fmt(alvoOp)}</strong>
+                              </span>
+                              {tempoStr && (
+                                <span className="text-[10px] text-white/30">
+                                  Tempo: <strong style={{ color: tempoStr.startsWith("✅") ? "#34D399" : tempoStr.includes("sem margem") ? "#F87171" : accent }}>{tempoStr}</strong>
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-
-                      {/* Zona Inferior: Mini-Dashboard Financeiro */}
-                      {op.meses > 0 && custoTotalFixo > 0 && (
-                        <div
-                          className="mx-3 mb-3 rounded-xl px-4 py-3 grid grid-cols-2 gap-3"
-                          style={{
-                            background: sel ? `${accent}0E` : "oklch(0 0 0 / 0.18)",
-                            border: `1px solid ${sel ? accent + "22" : "oklch(1 0 0 / 0.06)"}`,
-                          }}
-                        >
-                          <div>
-                            <p className="text-[9px] uppercase tracking-[0.14em] text-white/30 mb-1.5">🎯 Alvo total</p>
-                            <p className="text-[16px] font-bold leading-none" style={{ color: sel ? accent : "oklch(1 0 0 / 0.62)" }}>
-                              {fmt(alvoOp)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase tracking-[0.14em] text-white/30 mb-1.5">⏳ Tempo estimado</p>
-                            <p className="text-[13.5px] font-semibold leading-tight" style={{ color: sel ? `${accent}CC` : "oklch(1 0 0 / 0.42)" }}>
-                              {folgaMensal > 0 ? `~${tempo}` : "Sem margem"}
-                            </p>
-                            {folgaMensal > 0 && (
-                              <p className="text-[9px] text-white/25 mt-0.5">guardando 50% da folga</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
                     </button>
                   );
                 })}
               </div>
+
 
               {/* Painel de Custo de Oportunidade */}
               {mesesReserva !== null && (
@@ -753,7 +739,7 @@ export function AuditorPerfil({ isOpen, onClose, isMandatory = false }: AuditorP
               {/* Input: quanto já têm guardado */}
               {mesesReserva !== null && mesesReserva > 0 && (
                 <div className="space-y-2">
-                  <div className={labelCls}>Quanto vocês já têm guardado?</div>
+                  <div className={labelCls}>Já têm algo guardado? <span className="normal-case tracking-normal font-normal text-white/20">(opcional)</span></div>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-white/35 font-medium">R$</span>
                     <input type="text" inputMode="numeric" value={reserva} onChange={(e) => setReserva(maskBRL(e.target.value))} placeholder="Ex: 10.000" className={inputCls} />
