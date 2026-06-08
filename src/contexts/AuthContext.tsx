@@ -287,7 +287,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function joinGroup(code: string) {
     if (!user || !profile) return;
-    const q = query(collection(db, "groups"), where("inviteCode", "==", code.toUpperCase()));
+    const cleanCode = code.replace(/\s+/g, "").toUpperCase();
+    const q = query(collection(db, "groups"), where("inviteCode", "==", cleanCode));
     const snap = await getDocs(q);
     if (snap.empty) throw new Error("Código inválido.");
     const gDoc = snap.docs[0];

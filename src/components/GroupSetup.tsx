@@ -82,7 +82,7 @@ export function GroupSetup() {
             <div className="space-y-5">
               <label className="block">
                 <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-2">Código de convite</div>
-                <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())}
+                <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, "").toUpperCase())}
                   placeholder="AB12CD" maxLength={8}
                   className="w-full bg-white/[0.06] border border-border rounded-xl h-14 px-4 text-[22px] tracking-[0.4em] text-center font-mono focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground placeholder:tracking-normal placeholder:text-[14px]" />
               </label>
